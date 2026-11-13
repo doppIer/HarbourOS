@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Run ON THE HOST, from the HarborOS folder:  sudo bash host/setup-terminal.sh
+# Creates a "harbor" user (or uses $TERMINAL_SSH_USER), installs tmux, and
+# authorises a dedicated SSH key that only the HarborOS container holds.
+set -euo pipefail
+USER_NAME="${TERMINAL_SSH_USER:-harbor}"
+DATA_DIR="$(pwd)/data"
+
+apt-get install -y tmux openssh-server >/dev/null
+id "$USER_NAME" >/dev/null 2>&1 || useradd -m -s /bin/bash "$USER_NAME"
+# Optional: let this user manage docker / run claude. Remove if you don't want that.
+usermod -aG docker "$USER_NAME" || true
+
+mkdir -p "$DATA_DIR/ssh"
+[ -f "$DATA_DIR/ssh/id_ed25519" ] || ssh-keygen -t ed25519 -N "" -C "harboros" -f "$DATA_DIR/ssh/id_ed25519" >/dev/null
+chmod 600 "$DATA_DIR/ssh/id_ed25519"
+
+HOME_DIR=$(getent passwd "$USER_NAME" | cut -d: -f6)
+install -d -m 700 -o "$USER_NAME" -g "$USER_NAME" "$HOME_DIR/.ssh"
+grep -qF "$(cat "$DATA_DIR/ssh/id_ed25519.pub")" "$HOME_DIR/.ssh/authorized_keys" 2>/dev/null || \
+  cat "$DATA_DIR/ssh/id_ed25519.pub" >> "$HOME_DIR/.ssh/authorized_keys"
+chown "$USER_NAME:$USER_NAME" "$HOME_DIR/.ssh/authorized_keys"; chmod 600 "$HOME_DIR/.ssh/authorized_keys"
+
+# Nice defaults for browser terminals
+[ -f "$HOME_DIR/.tmux.conf" ] || cat > "$HOME_DIR/.tmux.conf" <<'EOF'
+set -g mouse on
+set -g history-limit 20000
+set -g default-terminal "xterm-256color"
+set -g status-style "bg=#0f1011,fg=#8a8f98"
+EOF
+chown "$USER_NAME:$USER_NAME" "$HOME_DIR/.tmux.conf"
+
+echo "Done. The container connects as $USER_NAME@host.docker.internal with data/ssh/id_ed25519."
+echo "For the Claude Code tab, install the claude CLI for $USER_NAME and run 'claude' once to sign in."

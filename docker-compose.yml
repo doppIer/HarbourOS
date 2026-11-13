@@ -1,0 +1,57 @@
+name: harboros
+
+services:
+  # Only this container can talk to dockerd, and only with the verbs enabled below.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1      # list / inspect / logs / stats
+      POST: 1            # needed for start/stop/restart
+      ALLOW_START: 1
+      ALLOW_STOP: 1
+      ALLOW_RESTARTS: 1
+      EVENTS: 1
+      INFO: 1
+      # everything else (EXEC, IMAGES, VOLUMES, NETWORKS, BUILD, ...) stays 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [internal]
+    mem_limit: 32m
+
+  harbor:
+    build: .
+    image: harboros:latest
+    restart: unless-stopped
+    depends_on: [docker-proxy]
+    env_file: .env
+    environment:
+      DOCKER_HOST: http://docker-proxy:2375
+      HOST_PROC: /host/proc
+      HOST_SYS: /host/sys
+      DATA_DIR: /data
+      DISK_PATHS: /host/root=/   # e.g. "/host/root=/,/host/data=/mnt/data"
+      TERMINAL_MODE: ssh
+      TERMINAL_SSH_TARGET: ${TERMINAL_SSH_USER:-harbor}@host.docker.internal
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./data:/data
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      # read-only, only used for disk usage (statfs); add more mounts as needed
+      - /:/host/root:ro
+      # - /mnt/data:/host/data:ro
+    # Bind to the Tailscale IP only (set TAILSCALE_IP in .env) — never 0.0.0.0.
+    ports:
+      - ${TAILSCALE_IP:-127.0.0.1}:7080:7080
+    networks: [internal, default]
+    mem_limit: 160m
+    cpus: 0.5
+    # Optional: let Sablier/Traefik discover it
+    labels:
+      - traefik.enable=false
+
+networks:
+  internal:
+    internal: true
