@@ -23,10 +23,6 @@
   <img src="docs/screenshots/home.png" alt="HarborOS home dashboard: sidebar with apps and status dots, system load chart, CPU, memory, power, network, disk and savings tiles" width="100%">
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/system-load.png" alt="System load chart with layered RAM, CPU and network areas and the trend analyzer card" width="100%">
-</p>
-
 <p align="center"><sub>Screenshots use the built-in demo mode (<code>HARBOR_DEMO=1</code>), so the numbers are simulated.</sub></p>
 
 ---
