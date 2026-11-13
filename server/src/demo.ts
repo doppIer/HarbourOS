@@ -13,15 +13,15 @@ let kwh = 1.84, rxToday = 4.1 * GB, txToday = 0.62 * GB;
 
 export function demoStats(): Stats {
   t++;
-  const cpu = Math.max(2, 9 + 5 * wave(28) + 9 * Math.max(0, wave(17, 1)) ** 2 + noise(3));
+  const cpu = Math.max(2, 9 + 6 * wave(90) + 10 * Math.max(0, wave(37, 1)) ** 4 + noise(3));
   const watts = 24 + cpu * 0.42 + noise(1.5);
-  const rx = Math.max(0, 900e3 + 650e3 * wave(36, 3.6) + noise(300e3));
+  const rx = Math.max(0, 900e3 + 700e3 * wave(60, 2) + noise(300e3));
   const tx = Math.max(0, 120e3 + 80e3 * wave(45) + noise(40e3));
   kwh += (watts * 2) / 3600 / 1000; rxToday += rx * 2; txToday += tx * 2;
   return {
     t: Date.now(),
     cpu: { total: cpu, cores: [0, 1, 2, 3].map((i) => Math.max(0, cpu + noise(8) + i)), temp: 44 + cpu * 0.35 + noise(1), load: [0.38 + cpu / 40, 0.41, 0.36] },
-    mem: { total: 16 * GB, used: (9.6 + 0.6 * wave(44, 1.8)) * GB, cached: 3.1 * GB, swapTotal: 4 * GB, swapUsed: 0.2 * GB },
+    mem: { total: 16 * GB, used: (9.6 + 0.3 * wave(120)) * GB, cached: 3.1 * GB, swapTotal: 4 * GB, swapUsed: 0.2 * GB },
     uptime: 23 * 86400 + 4 * 3600 + t * 2,
     net: { rx, tx, rxToday, txToday },
     disks: [{ mount: "/", total: 476 * GB, used: 371 * GB }, { mount: "/mnt/data", total: 3.6 * 1024 * GB, used: 1.9 * 1024 * GB }],
