@@ -70,6 +70,12 @@ function Users() {
     setErr(""); try { await api(`/api/users/${u.id}`, { method: "DELETE" }); load(); } catch (e) { setErr((e as Error).message); }
   };
   const pending = list.filter((u) => u.status === "pending");
+  const [codes, setCodes] = useState<Record<string, string>>({});
+  const resetCode = async (u: Me) => {
+    setErr("");
+    try { const r = await api<{ code: string }>(`/api/users/${u.id}/reset`, { method: "POST" }); setCodes((c) => ({ ...c, [u.id]: r.code })); }
+    catch (e) { setErr((e as Error).message); }
+  };
 
   return (
     <>
@@ -81,6 +87,12 @@ function Users() {
             <div class="grow" style={{ minWidth: 0 }}>
               <div>{u.name} {u.id === me.value?.id && <span class="dim">(you)</span>}</div>
               <div class="dim mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis" }}>{u.email}</div>
+              {codes[u.id] && (
+                <div style={{ fontSize: 12.5, marginTop: 4, color: "var(--t2)" }}>
+                  Reset code <span class="mono" style={{ color: "var(--t1)", userSelect: "all" }}>{codes[u.id]}</span>
+                  <span class="dim"> · give it to {u.name.split(" ")[0]}; they use "Forgot password?" on the sign-in screen. Valid 15 minutes.</span>
+                </div>
+              )}
             </div>
             {u.status === "pending" ? (
               <>
@@ -92,6 +104,7 @@ function Users() {
                 <select class="input" style={{ width: 110, height: 28 }} value={u.role} onChange={(e) => patch(u, { role: e.currentTarget.value as Me["role"] })}>
                   <option value="admin">Admin</option><option value="member">Member</option>
                 </select>
+                <button class="btn" onClick={() => resetCode(u)} title="Make a one-time code they can use to set a new password">Reset password</button>
                 <button class="iconbtn" aria-label={`Delete ${u.name}`} disabled={u.id === me.value?.id} onClick={() => remove(u)}>
                   <Icon name="solar:trash-bin-minimalistic-linear" size={15} />
                 </button>

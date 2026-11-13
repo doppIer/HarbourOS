@@ -34,12 +34,13 @@
 | **Sidebar of your services** | Linear-style, collapsible, with live status dots: grey stopped, amber starting, green running, red crash-looping. Drag to reorder, right-click or long-press for Restart, Stop, Logs, Edit. |
 | **Start on demand** | Opening a stopped app starts its container, or its whole compose stack in dependency order, and shows a boot screen until the health check passes. |
 | **Idle auto-stop** | Apps nobody has used for N minutes are stopped to save power. "Always on" apps (Home Assistant, bots) are never touched. Works alongside Sablier and Traefik. |
+| **Files** | Browse, edit, upload and download files on the server. Runs as the terminal user on the host, so it can only touch what that user can. |
 | **App store** | 183 apps from the CasaOS catalog, sorted by Docker Hub downloads. Pick ports and folders, install with one click, and the app lands in the sidebar. |
 | **Live dashboard** | CPU per core, temperature, RAM, swap, disks, network, Tailscale, estimated watts and monthly cost, and how much stopped containers are saving. |
 | **Widgets you edit as files** | Every tile is a small JS file in `data/widgets/`. Save it and the tile reloads in every open browser, with no build or restart. |
 | **Terminal** | xterm.js tabs backed by tmux on the host, so sessions survive closing the browser. iPhone gets an extra key row. |
 | **Claude** | Chat that can read live stats, containers and logs. Anything that changes the server appears as a card you approve first. A second tab runs Claude Code in tmux. |
-| **Accounts** | Admin and member roles, sign-up with admin approval, scrypt-hashed passwords. Members see the dashboard and open apps; only admins get the terminal, Claude and controls. |
+| **Accounts** | Admin and member roles, sign-up with admin approval, scrypt-hashed passwords, and a forgot-password flow that works without email. Members see the dashboard and open apps; only admins get the terminal, Claude and controls. |
 | **Light on the box it watches** | One Node process (~40 MB idle), one WebSocket per tab, stats collected once and fanned out, slowing to every 30 s when nobody's looking. ~29 KB gzipped main bundle; terminal and Claude load on demand. |
 
 ## Screenshots
@@ -65,6 +66,10 @@
     <td><img src="docs/screenshots/store.png" alt="App store with the most-downloaded app per category and a grid of apps with download counts and memory"><br><sub><b>Store.</b> Most-downloaded first, search and categories.</sub></td>
     <td><img src="docs/screenshots/store-detail.png" alt="Install panel for Immich with stack name, ports, data folders and a sleep-when-idle option"><br><sub><b>Install.</b> Ports, folders and idle sleep; view the compose file first.</sub></td>
   </tr>
+  <tr>
+    <td><img src="docs/screenshots/files.png" alt="Files app with a folder list on the left and a compose file open in the editor on the right"><br><sub><b>Files.</b> Edit configs on the server; ⌘S saves.</sub></td>
+    <td><img src="docs/screenshots/forgot-password.png" alt="Reset your password screen with an email field"><br><sub><b>Forgot password.</b> A one-time code from the server log or an admin.</sub></td>
+  </tr>
 </table>
 
 <p align="center">
@@ -84,7 +89,7 @@ browser ──(Tailscale)──► harbor (Node/Fastify) ──► docker-socket
 ```
 
 - **Backend:** Node 22 + TypeScript + Fastify. One collection loop reads `/proc`, `/sys` and Intel RAPL, and pushes to every open tab over a single multiplexed WebSocket.
-- **Store installs:** `docker compose` runs on the host over SSH (see [App store](#app-store)), not through the proxy.
+- **Store installs and Files:** run on the host over SSH as the terminal user (see [App store](#app-store) and [Files](#files)), not through the proxy.
 - **Docker:** only through [`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy) with list, inspect, logs, events, start, stop and restart. The raw socket is never mounted into the web container.
 - **Frontend:** Preact + signals + Vite. Charts are canvas on one shared `requestAnimationFrame` loop that pauses while the tab is hidden.
 - **Storage:** SQLite for apps, settings, accounts, energy history and Claude conversations.
@@ -122,6 +127,13 @@ Then set `TRUST_TAILSCALE_HEADERS=1` and `TAILSCALE_ALLOWED_USERS=you@example.co
 - **Member:** sees the dashboard and opens apps. Can't use the terminal, Claude, container controls or settings; the server enforces this, not just the UI.
 - **Sign-up:** the sign-in screen has a Sign up link while **Settings → Sign-in screen → Show "Sign up"** is on (the default). New accounts wait as "pending" until an admin approves them under **Settings → Users**, where you can also change roles or delete accounts. HarborOS always keeps at least one admin.
 - **Passwords:** stored as scrypt hashes. Changing your password signs out your other devices.
+- **Forgot password:** HarborOS doesn't send email. **Forgot password?** on the sign-in screen writes a one-time code to the server log; read it on the server with
+
+  ```bash
+  docker compose logs harbor | grep -A2 "password reset"
+  ```
+
+  Or an admin clicks **Reset password** next to the user in **Settings → Users** and passes the code on. Codes are 8 characters, work once, expire after 15 minutes and burn after 5 wrong tries. Resetting signs the account out everywhere. The response is the same whether or not the email exists, so the form can't be used to find accounts.
 
 ## Adding an app
 
@@ -136,6 +148,14 @@ Click **Add app** in the sidebar. You can set:
 Link-only apps (no container) work too. Everything is saved on the server.
 
 Some apps refuse to load inside an iframe because of `X-Frame-Options` or a CSP `frame-ancestors` header. For those, remove the header in your reverse proxy, or use **Open in new tab**.
+
+## Files
+
+**Files** in the sidebar (admins only) browses the server's filesystem: open folders, edit text files (line numbers, ⌘S / Ctrl+S to save), preview images, upload by dropping files onto the list, download, rename, create and delete. Right-click or long-press a row for its menu.
+
+Every operation runs **on the host as the terminal user** over the same SSH connection as the terminal and store, not inside the container. So Files can only read or change what that user can: by default your home folder, `~/harbor-stacks`, and anything you've given the user access to. Root-owned files under `/etc` are readable but saving them fails with *Permission denied*. HarborOS won't delete top-level folders like `/home` or anything under `/proc`, `/sys`, `/dev` or `/boot`.
+
+Saving is refused if the file changed on disk after you opened it. Text files up to 5 MB open in the editor; uploads are limited to 200 MB each.
 
 ## App store
 

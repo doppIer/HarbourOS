@@ -18,6 +18,7 @@ export const env = {
   sshTarget: e.TERMINAL_SSH_TARGET ?? "harbor@host.docker.internal",
   sshKey: e.TERMINAL_SSH_KEY ?? "/data/ssh/id_ed25519",
   hostRoot: e.HOST_ROOT ?? "/",          // host "/" as seen by this process (/host/root in Docker)
+  filesRoot: e.FILES_ROOT ?? "/",       // local mode only: what the Files app treats as "/"
   storeRepo: e.STORE_REPO ?? "IceWhaleTech/CasaOS-AppStore",
   storeBranch: e.STORE_BRANCH ?? "main",
 };

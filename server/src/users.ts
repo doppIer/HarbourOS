@@ -65,6 +65,35 @@ export const users = {
   },
 };
 
+// ---- password reset codes ----
+// There's no mail server, so a code is either shown to an admin (Settings →
+// Users) or printed to the server log for whoever has shell access.
+db.exec("CREATE TABLE IF NOT EXISTS password_resets (user_id TEXT PRIMARY KEY, hash TEXT NOT NULL, expires INTEGER NOT NULL, tries INTEGER NOT NULL DEFAULT 0)");
+const RESET_TTL = 15 * 60_000;
+const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
+const sha = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
+const norm = (c: string) => c.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+export const resets = {
+  /** New one-time code for a user, replacing any earlier one. */
+  create(userId: string): { code: string; expires: number } {
+    const raw = Array.from(crypto.randomBytes(8), (b) => ALPHA[b % ALPHA.length]).join("");
+    const expires = Date.now() + RESET_TTL;
+    db.prepare("INSERT OR REPLACE INTO password_resets(user_id,hash,expires,tries) VALUES(?,?,?,0)").run(userId, sha(raw), expires);
+    return { code: `${raw.slice(0, 4)}-${raw.slice(4)}`, expires };
+  },
+  /** True if the code is right; 5 wrong tries or expiry burns it. */
+  use(userId: string, code: string): boolean {
+    const r: any = db.prepare("SELECT * FROM password_resets WHERE user_id=?").get(userId);
+    if (!r) return false;
+    if (r.expires < Date.now() || r.tries >= 5) { db.prepare("DELETE FROM password_resets WHERE user_id=?").run(userId); return false; }
+    const ok = crypto.timingSafeEqual(Buffer.from(sha(norm(code))), Buffer.from(r.hash));
+    if (ok) db.prepare("DELETE FROM password_resets WHERE user_id=?").run(userId);
+    else db.prepare("UPDATE password_resets SET tries=tries+1 WHERE user_id=?").run(userId);
+    return ok;
+  },
+};
+
 export const validEmail = (e: unknown): e is string =>
   typeof e === "string" && e.length < 200 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 export const validPassword = (p: unknown): p is string => typeof p === "string" && p.length >= 8 && p.length <= 200;

@@ -8,7 +8,7 @@ import crypto from "node:crypto";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db, settings } from "./db.js";
 import { env } from "./env.js";
-import { users, validEmail, validPassword, type User } from "./users.js";
+import { resets, users, validEmail, validPassword, type User } from "./users.js";
 
 const COOKIE = "harbor_session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -58,7 +58,7 @@ function memberAllowed(method: string, url: string): boolean {
   return false;
 }
 
-const PUBLIC = new Set(["/api/login", "/api/signup", "/api/me", "/api/auth/config", "/api/logout"]);
+const PUBLIC = new Set(["/api/login", "/api/signup", "/api/me", "/api/auth/config", "/api/logout", "/api/password/forgot", "/api/password/reset"]);
 
 export async function registerAuth(app: FastifyInstance) {
   // Bootstrap: an admin from HARBOR_PASSWORD on a fresh install (optional).
@@ -100,6 +100,37 @@ export async function registerAuth(app: FastifyInstance) {
     const u = users.create(email, displayName, password, first ? "admin" : "member", first ? "active" : "pending");
     if (u.status === "active") { startSession(reply, u); return { user: u }; }
     return { pending: true };
+  });
+
+  // ---- forgotten passwords ----
+  // Same answer whether or not the email exists, so this can't be used to
+  // discover accounts. The code goes to the server log: only someone with
+  // shell access to the server (or an admin, via Settings → Users) sees it.
+  app.post("/api/password/forgot", async (req, reply) => {
+    if (limited(req.ip)) return reply.code(429).send({ error: "Too many attempts. Try again in a minute." });
+    fail(req.ip); // counts toward the limit: codes shouldn't be spammed into the log
+    const { email } = (req.body ?? {}) as { email?: string };
+    if (!validEmail(email)) return reply.code(400).send({ error: "Enter a valid email address." });
+    const u = users.byEmail(email);
+    if (u) {
+      const { code } = resets.create(u.id);
+      console.log(`\n  ┌──────────────────────────────────────────────\n  │ HarborOS password reset for ${u.email}\n  │ Code: ${code}   (valid 15 minutes, one use)\n  └──────────────────────────────────────────────\n`);
+    }
+    return { ok: true };
+  });
+
+  app.post("/api/password/reset", async (req, reply) => {
+    if (limited(req.ip)) return reply.code(429).send({ error: "Too many attempts. Try again in a minute." });
+    const { email, code, password } = (req.body ?? {}) as { email?: string; code?: string; password?: string };
+    if (!validEmail(email) || typeof code !== "string") return reply.code(400).send({ error: "Enter your email and the reset code." });
+    if (!validPassword(password)) return reply.code(400).send({ error: "Use at least 8 characters for the new password." });
+    const u = users.byEmail(email);
+    if (!u || !resets.use(u.id, code)) { fail(req.ip); return reply.code(400).send({ error: "That code is wrong or has expired. Request a new one." }); }
+    users.setPassword(u.id, password); // also signs out every other session
+    attempts.delete(req.ip);
+    if (u.status !== "active") return { pending: true };
+    startSession(reply, u);
+    return { user: u };
   });
 
   app.post("/api/logout", async (req, reply) => {
@@ -154,6 +185,11 @@ export async function registerAuth(app: FastifyInstance) {
     const losingAdmin = target.role === "admin" && target.status === "active" && (role === "member" || status === "pending");
     if (losingAdmin && users.activeAdmins() <= 1) return reply.code(400).send({ error: "Keep at least one admin." });
     return users.update(id, { ...(role ? { role } : {}), ...(status ? { status } : {}) });
+  });
+  app.post("/api/users/:id/reset", async (req, reply) => {
+    const target = users.get((req.params as { id: string }).id);
+    if (!target) return reply.code(404).send({ error: "No such user." });
+    return resets.create(target.id); // admin hands the code to the user
   });
   app.delete("/api/users/:id", async (req, reply) => {
     const { id } = req.params as { id: string };

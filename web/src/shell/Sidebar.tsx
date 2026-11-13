@@ -76,6 +76,7 @@ export function Sidebar() {
         <div class="sb-scroll">
           <Item id="home" icon="solar:home-2-linear" label="Home" />
           {isAdmin.value && <Item id="terminal" icon="solar:programming-linear" label="Terminal" />}
+          {isAdmin.value && <Item id="files" icon="solar:folder-with-files-linear" label="Files" />}
           {isAdmin.value && <Item id="ai" icon="solar:magic-stick-3-linear" label="Claude" />}
           {isAdmin.value && <Item id="store" icon="solar:shop-2-linear" label="Store" />}
 

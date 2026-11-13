@@ -14,6 +14,7 @@ import { attach, killSession, listSessions } from "./terminal/pty.js";
 import { chat, approveAction, listChats, loadChat, deleteChat } from "./ai/claude.js";
 import { listWidgets, widgetDir, widgetFile } from "./widgets/store.js";
 import type { AppConfig } from "./protocol.js";
+import { clean, hostfs, httpError } from "./files/hostfs.js";
 import { catalog, findApp, iconDir as storeIcons, isRefreshing, refreshCatalog } from "./store/catalog.js";
 import { defaults, installs, jobList, render, startInstall, startUninstall, type InstallOptions } from "./store/install.js";
 
@@ -174,6 +175,71 @@ export async function registerRoutes(app: FastifyInstance) {
   });
   app.post("/api/store/installed/:project/uninstall", async (req) =>
     startUninstall((req.params as any).project, !!(req.body as any)?.removeData));
+
+  // ---------- files (admin only: not in memberAllowed) ----------
+  const TEXT_MAX = 5 * 2 ** 20, UPLOAD_MAX = 200 * 2 ** 20;
+  app.addContentTypeParser("application/octet-stream", { parseAs: "buffer", bodyLimit: UPLOAD_MAX }, (_req, body, done) => done(null, body));
+  app.get("/api/files/home", async () => ({ home: await hostfs.home(), mode: env.terminalMode }));
+  app.get("/api/files/list", async (req) => {
+    const dir = clean((req.query as any).path ?? "/");
+    const entries = await hostfs.list(dir);
+    entries.sort((a, b) => Number((b.type === "dir" || b.target === "dir")) - Number((a.type === "dir" || a.target === "dir")) || a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+    return { path: dir, entries };
+  });
+  app.get("/api/files/read", async (req) => {
+    const p = clean((req.query as any).path);
+    const st = await hostfs.stat(p);
+    if (st.type !== "file") throw httpError(400, `${p} is not a file.`);
+    if (st.size > TEXT_MAX) return { path: p, ...st, tooLarge: true };
+    const buf = await hostfs.read(p, TEXT_MAX);
+    const binary = buf.subarray(0, 8000).includes(0);
+    return { path: p, ...st, binary, text: binary ? undefined : buf.toString("utf8") };
+  });
+  app.put("/api/files/write", async (req) => {
+    const { path: p0, content, mtime } = req.body as { path: string; content: string; mtime?: number };
+    const p = clean(p0);
+    if (typeof content !== "string") throw httpError(400, "Nothing to save.");
+    if (mtime != null) {
+      const now = await hostfs.stat(p).catch(() => null);
+      if (now && Math.abs(now.mtime - mtime) > 1) throw httpError(409, "The file changed on disk since you opened it. Reload it first.");
+    }
+    await hostfs.write(p, Buffer.from(content, "utf8"));
+    return hostfs.stat(p);
+  });
+  app.get("/api/files/raw", async (req, reply) => {
+    const { path: p0, dl } = req.query as { path: string; dl?: string };
+    const p = clean(p0);
+    const st = await hostfs.stat(p);
+    if (st.type !== "file") throw httpError(400, `${p} is not a file.`);
+    const name = path.posix.basename(p);
+    const types: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".pdf": "application/pdf", ".mp4": "video/mp4", ".mp3": "audio/mpeg" };
+    const type = dl ? "application/octet-stream" : types[path.extname(name).toLowerCase()] ?? "application/octet-stream";
+    reply.header("Content-Length", st.size);
+    reply.header("Content-Disposition", `${dl || type === "application/octet-stream" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(name)}`);
+    reply.header("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'"); // svg/pdf can't run script
+    reply.header("X-Content-Type-Options", "nosniff");
+    return reply.type(type).send(hostfs.stream(p));
+  });
+  app.post("/api/files/upload", async (req) => {
+    const { dir, name } = req.query as { dir: string; name: string };
+    if (typeof name !== "string" || !name || name.includes("/") || name === "." || name === "..") throw httpError(400, "Bad file name.");
+    const p = clean(path.posix.join(clean(dir), name));
+    if (!Buffer.isBuffer(req.body)) throw httpError(400, "Send the file as application/octet-stream.");
+    if (await hostfs.stat(p).then(() => true, () => false) && (req.query as any).replace !== "1") throw httpError(409, `${name} already exists.`);
+    await hostfs.write(p, req.body);
+    return { path: p };
+  });
+  app.post("/api/files/mkdir", async (req) => { const p = clean((req.body as any).path); await hostfs.mkdir(p); return { path: p }; });
+  app.post("/api/files/new", async (req) => {
+    const p = clean((req.body as any).path);
+    if (await hostfs.stat(p).then(() => true, () => false)) throw httpError(409, "Something with that name already exists.");
+    await hostfs.write(p, Buffer.alloc(0)); return { path: p };
+  });
+  app.post("/api/files/rename", async (req) => {
+    const { from, to } = req.body as { from: string; to: string };
+    await hostfs.rename(clean(from), clean(to)); return { ok: true };
+  });
+  app.post("/api/files/delete", async (req) => { await hostfs.remove(clean((req.body as any).path)); return { ok: true }; });
 
   // ---------- terminal ----------
   app.get("/api/terminal/sessions", async () => listSessions());

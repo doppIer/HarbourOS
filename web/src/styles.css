@@ -204,6 +204,58 @@ table.ct tr:hover .acts { opacity: 1; }
 @keyframes slidein { from { transform: translateX(24px); opacity: 0; } }
 .btn:disabled { opacity: .5; cursor: default; }
 
+/* ---------- files ---------- */
+.files { position: absolute; inset: 0; display: flex; min-height: 0; }
+.fl-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.files.has-editor .fl-pane { flex: 0 0 min(46%, 620px); border-right: 1px solid var(--line); }
+.files.has-editor .fl-table .hide-sm, .files.has-editor .fl-filter { display: none; }
+.fl-places { display: flex; gap: 4px; padding: 10px 14px 0; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+.fl-place { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border: 1px solid var(--line); background: var(--raise); color: var(--t3); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.fl-place:hover { color: var(--t1); background: var(--hover); }
+.fl-place.on { color: var(--t1); border-color: var(--line-2); }
+.fl-bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.fl-path { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; height: 30px; padding: 0 4px 0 6px; border: 1px solid var(--line); background: rgba(0,0,0,.2); overflow: hidden; font-size: 13px; }
+.fl-path input { flex: 1; min-width: 0; border: 0; outline: none; background: none; height: 100%; }
+.crumb-btn { border: 0; background: none; color: var(--t2); padding: 2px 4px; cursor: pointer; white-space: nowrap; font-size: 13px; }
+.crumb-btn:hover { color: var(--t1); background: var(--hover); }
+.fl-path .crumb-btn:last-of-type { color: var(--t1); }
+.fl-actions { display: flex; align-items: center; gap: 2px; }
+.fl-filter { width: 120px; height: 28px; padding: 0 8px; border: 1px solid var(--line); background: none; outline: none; font-size: 12.5px; margin-right: 4px; }
+.fl-filter:focus { border-color: var(--acc); }
+.iconbtn:disabled { opacity: .35; cursor: default; background: none; }
+.fl-err, .fl-note { display: flex; align-items: center; gap: 8px; margin: 10px 14px 0; padding: 7px 10px; font-size: 12.5px; border: 1px solid var(--line); }
+.fl-err { color: var(--err); border-color: color-mix(in srgb, var(--err) 35%, transparent); background: color-mix(in srgb, var(--err) 6%, transparent); }
+.fl-note { color: var(--t2); }
+.fl-list { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.fl-list.drag { outline: 1.5px dashed var(--acc); outline-offset: -6px; }
+.fl-table th { position: sticky; top: 0; background: #0f1011; z-index: 1; }
+.fl-table th.r, .fl-table td.r { text-align: right; }
+.fl-table tbody tr { cursor: pointer; }
+.fl-table tr.sel td { background: var(--active); }
+.fl-table td { padding: 6px 10px; }
+.fl-table td:first-child, .fl-table th:first-child { padding-left: 16px; }
+.fl-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.fl-n { overflow: hidden; text-overflow: ellipsis; color: var(--t1); font-family: var(--sans); }
+.fl-inline { flex: 1; height: 24px; padding: 0 6px; border: 1px solid var(--acc); background: rgba(0,0,0,.3); outline: none; font-size: 12.5px; }
+.fl-empty { padding: 28px 16px; color: var(--t3); font-size: 13px; }
+.fl-drop { position: absolute; inset: 8px; display: grid; place-items: center; align-content: center; gap: 8px; background: rgba(8,9,10,.82); color: var(--t2); font-size: 13px; pointer-events: none; }
+.fl-foot { padding: 6px 16px; border-top: 1px solid var(--line); font-size: 11.5px; flex-shrink: 0; }
+.fl-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0b0c0d; animation: fade .15s; }
+.fl-editor header { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); color: var(--t3); }
+.fl-ename { color: var(--t1); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.fl-epath { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); }
+.fl-code { flex: 1; min-height: 0; display: flex; }
+.fl-gutter { flex-shrink: 0; overflow: hidden; padding: 12px 10px 12px 14px; text-align: right; color: var(--t4); font-size: 12.5px; line-height: 1.6; user-select: none; border-right: 1px solid var(--line); min-width: 48px; }
+.fl-code textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: none; color: var(--t1); padding: 12px 16px; font-size: 12.5px; line-height: 1.6; white-space: pre; overflow: auto; tab-size: 2; }
+.fl-preview { flex: 1; min-height: 0; display: grid; place-items: center; align-content: center; gap: 12px; padding: 24px; overflow: auto; }
+.fl-preview img { max-width: 100%; max-height: 100%; object-fit: contain; background: repeating-conic-gradient(#16171a 0% 25%, #101113 0% 50%) 50% / 16px 16px; }
+.fl-editor footer { padding: 6px 16px; border-top: 1px solid var(--line); font-size: 11.5px; }
+@media (max-width: 760px) {
+  .files.has-editor .fl-pane { display: none; }
+  .fl-filter { display: none; }
+}
+
 /* ---------- auth screen ---------- */
 .auth { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; overflow: hidden; }
 .auth-center { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; }

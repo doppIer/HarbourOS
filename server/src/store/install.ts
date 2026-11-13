@@ -6,7 +6,7 @@
 // ~/harbor-stacks/<project>/ on the host.
 import fs from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { hostSpawn, q } from "../host.js";
 import { parse, stringify } from "yaml";
 import { db, apps } from "../db.js";
 import { env } from "../env.js";
@@ -149,20 +149,16 @@ function flagMount(src: string, svc: string, risks: string[]) {
 
 const ansi = /\x1b\[[0-9;?]*[A-Za-z]|\r/g;
 function hostShell(script: string, onLine: (l: string) => void): Promise<number> {
-  const [cmd, args] = env.terminalMode === "ssh"
-    ? ["ssh", ["-i", env.sshKey, "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-o", `UserKnownHostsFile=${env.dataDir}/ssh/known_hosts`, env.sshTarget, "--", "bash", "-s"]]
-    : ["bash", ["-s"]];
   return new Promise((resolve) => {
-    const p = spawn(cmd, args as string[], { stdio: ["pipe", "pipe", "pipe"] });
+    const p = hostSpawn(script);
     let buf = "";
     const feed = (d: Buffer) => { buf += d.toString("utf8"); let i; while ((i = buf.indexOf("\n")) >= 0) { const l = buf.slice(0, i).replace(ansi, "").trimEnd(); buf = buf.slice(i + 1); if (l) onLine(l); } };
     p.stdout.on("data", feed); p.stderr.on("data", feed);
     p.on("error", (e) => { onLine(e.message); resolve(127); });
     p.on("close", (code) => { if (buf.trim()) onLine(buf.replace(ansi, "").trim()); resolve(code ?? 1); });
-    p.stdin.end(script);
+    p.stdin.end();
   });
 }
-const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 const b64 = (s: string) => Buffer.from(s).toString("base64");
 
 // ---------------- jobs ----------------
