@@ -1,7 +1,7 @@
-// What stopped containers are saving. RAM/CPU of a stopped container is taken
-// from the last time it was seen running in this browser session; the watt
-// figure is a rough 0.7 W per GB RAM + CPU share of current package power.
-const lastSeen = new Map();
+// What stopped containers are saving. RAM/CPU of a stopped container is the
+// last value the server saw while it was running (container.lastMem/lastCpu).
+// Watts are a rough estimate: ~0.7 W per GB of RAM plus the container's share
+// of CPU package power.
 export default {
   title: "Power savings",
   sizes: ["m", "s"],
@@ -12,14 +12,19 @@ export default {
     el.append(sub);
     return {
       update({ containers, stats }) {
-        for (const c of containers) if (c.state === "running" && c.mem) lastSeen.set(c.name, { mem: c.mem, cpu: c.cpu ?? 0 });
         const stopped = containers.filter((c) => c.state !== "running");
-        let mem = 0, cpu = 0;
-        for (const c of stopped) { const s = lastSeen.get(c.name); if (s) { mem += s.mem; cpu += s.cpu; } }
+        let mem = 0, cpu = 0, known = 0;
+        for (const c of stopped) if (c.lastMem) { mem += c.lastMem; cpu += c.lastCpu ?? 0; known++; }
         const watts = (mem / 2 ** 30) * 0.7 + (cpu / 100) * Math.max(0, stats.power.watts - 15);
-        const kwhMonth = (watts * 24 * 30) / 1000;
-        num.set("−" + ui.fmt.bytes(mem).toString());
-        sub.textContent = `${stopped.length} stopped · ≈ −${watts.toFixed(1)} W · ≈ ${stats.power.currency}${(kwhMonth * stats.power.pricePerKwh).toFixed(2)}/mo`;
+        const perMonth = ((watts * 24 * 30) / 1000) * stats.power.pricePerKwh;
+        if (!mem) {
+          num.set("–");
+          sub.textContent = `${stopped.length} stopped · usage not seen yet`;
+          return;
+        }
+        const b = ui.fmt.bytes(mem);
+        num.set(b.v, " " + b.u);
+        sub.textContent = `${known} of ${stopped.length} stopped · ≈ ${watts.toFixed(1)} W · ≈ ${stats.power.currency}${perMonth.toFixed(2)}/mo saved`;
       },
     };
   },

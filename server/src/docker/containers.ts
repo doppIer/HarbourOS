@@ -3,12 +3,14 @@
 import { docker, cgroupUsage, toInfo, type RawContainer } from "./client.js";
 import { hub } from "../hub.js";
 import type { ContainerInfo } from "../protocol.js";
+import { demo, demoContainers } from "../demo.js";
 
 export let raw: RawContainer[] = [];
 export let containers: ContainerInfo[] = [];
 const restarts = new Map<string, number>();     // from inspect, refreshed on events
 const startedAt = new Map<string, string>();
 const idleSince = new Map<string, number>();
+const lastUsage = new Map<string, { mem: number; cpu: number }>(); // survives stop, for savings
 const IDLE_CPU = 0.5; // %
 
 let refreshing: Promise<void> | null = null;
@@ -22,7 +24,9 @@ export function refresh(): Promise<void> {
           if (u.cpu < IDLE_CPU) { if (!idleSince.has(c.Id)) idleSince.set(c.Id, Date.now()); }
           else idleSince.delete(c.Id);
         } else idleSince.delete(c.Id);
-        return toInfo(c, { ...u, restartCount: restarts.get(c.Id) ?? 0, startedAt: startedAt.get(c.Id), idleSince: idleSince.get(c.Id) });
+        if (c.State === "running" && u.mem) lastUsage.set(c.Id, { mem: u.mem, cpu: u.cpu ?? 0 });
+        const last = lastUsage.get(c.Id);
+        return toInfo(c, { ...u, restartCount: restarts.get(c.Id) ?? 0, startedAt: startedAt.get(c.Id), idleSince: idleSince.get(c.Id), lastMem: last?.mem, lastCpu: last?.cpu });
       });
       hub.publish("containers", { t: "containers", d: containers });
     } catch (e) { console.error("docker refresh failed:", (e as Error).message); }
@@ -42,6 +46,11 @@ export const findByName = (name: string) => raw.find((c) => c.Names.some((n) => 
 export const stackMembers = (project: string) => raw.filter((c) => c.Labels["com.docker.compose.project"] === project);
 
 export async function startContainerWatch() {
+  if (demo) {
+    const tick = () => { const d = demoContainers(); raw = d.raw; containers = d.info; hub.publish("containers", { t: "containers", d: containers }); };
+    tick(); setInterval(tick, 5000);
+    return;
+  }
   await refresh();
   await Promise.all(raw.map((c) => inspectOne(c.Id)));
   await refresh();

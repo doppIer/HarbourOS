@@ -32,6 +32,8 @@ export interface ContainerInfo {
   cpu?: number;               // %
   mem?: number;               // bytes
   idleSince?: number;         // epoch ms, cpu ~0 since
+  lastMem?: number;           // RAM/CPU last seen while running (for savings)
+  lastCpu?: number;
 }
 
 export interface Stats {

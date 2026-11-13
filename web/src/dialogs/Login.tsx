@@ -93,7 +93,7 @@ export function Login({ onDone }: { onDone: () => void }) {
       <BackgroundLayer module={cfg.background.module} dim={cfg.background.dim} blur={cfg.background.blur} />
       <div class="auth-center">
         <div class={`auth-head ${focused && value ? "soft" : ""}`}>
-          <img src="/icons/mark.svg" width={36} height={36} alt="" style={{ marginBottom: 18 }} />
+          <img src="/icons/mark.png" width={40} height={36} alt="" style={{ marginBottom: 18 }} />
           <h1>{pending ? "You're on the list" : copy.title}</h1>
           <p>{pending ? "Thanks. An admin needs to approve your account; you can sign in after that." : copy.sub}</p>
         </div>

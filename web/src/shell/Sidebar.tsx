@@ -63,7 +63,7 @@ export function Sidebar() {
         <div class="sb-brand">
           <button class="iconbtn" style={{ marginLeft: -6 }} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => saveSettings({ sidebarCollapsed: !collapsed })}>
-            <img src="/icons/mark.svg" width={20} height={20} alt="" />
+            <img src="/icons/mark.png" width={22} height={20} alt="" />
           </button>
           <span class="brand-name">HarborOS</span>
           <span class="brand-tools">

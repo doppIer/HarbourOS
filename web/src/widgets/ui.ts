@@ -133,7 +133,11 @@ export function area(parent: HTMLElement, o: { max?: number; points?: number; tr
     const ds = series.map((s) => downsample(s.data, n));
     const max = o.max ?? Math.max(1, ...ds.flat()) * 1.25;
     const top = 50;
-    ds.forEach((d, si) => {
+    // Draw the largest series first so smaller ones stay visible on top.
+    const mean = (d: number[]) => d.reduce((a, b) => a + b, 0) / (d.length || 1);
+    const order = ds.map((_, i) => i).sort((a, b) => mean(ds[b]) - mean(ds[a]));
+    order.forEach((si) => {
+      const d = ds[si];
       const col = series[si].color;
       const pts = d.map((v, i) => [(i / (d.length - 1)) * w, H - (v / max) * (H - top)] as [number, number]);
       const g = ctx.createLinearGradient(0, top, 0, H);

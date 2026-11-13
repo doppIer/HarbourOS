@@ -4,8 +4,9 @@ import { db, settings } from "../db.js";
 import { cpu, mem, uptime, net, disks, diskIo } from "./system.js";
 import { power } from "./power.js";
 import type { Stats } from "../protocol.js";
+import { demo, demoStats } from "../demo.js";
 
-const FAST = 2000, SLOW = 30000;
+const FAST = demo ? 400 : 2000, SLOW = 30000;
 let timer: NodeJS.Timeout | null = null;
 let lastTick = Date.now();
 export let latest: Stats | null = null;
@@ -17,6 +18,7 @@ const getDay = db.prepare("SELECT wh,rx,tx FROM energy WHERE day=?");
 const monthWh = db.prepare("SELECT COALESCE(SUM(wh),0) AS wh, COUNT(*) AS n FROM energy WHERE day >= ?");
 
 async function tick() {
+  if (demo) { latest = demoStats(); hub.publish("stats", { t: "stats", d: latest }); return; }
   const now = Date.now();
   const dtH = (now - lastTick) / 3_600_000;
   lastTick = now;
