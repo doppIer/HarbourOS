@@ -34,6 +34,7 @@
 | **Sidebar of your services** | Linear-style, collapsible, with live status dots: grey stopped, amber starting, green running, red crash-looping. Drag to reorder, right-click or long-press for Restart, Stop, Logs, Edit. |
 | **Start on demand** | Opening a stopped app starts its container, or its whole compose stack in dependency order, and shows a boot screen until the health check passes. |
 | **Idle auto-stop** | Apps nobody has used for N minutes are stopped to save power. "Always on" apps (Home Assistant, bots) are never touched. Works alongside Sablier and Traefik. |
+| **App store** | 183 apps from the CasaOS catalog, sorted by Docker Hub downloads. Pick ports and folders, install with one click, and the app lands in the sidebar. |
 | **Live dashboard** | CPU per core, temperature, RAM, swap, disks, network, Tailscale, estimated watts and monthly cost, and how much stopped containers are saving. |
 | **Widgets you edit as files** | Every tile is a small JS file in `data/widgets/`. Save it and the tile reloads in every open browser, with no build or restart. |
 | **Terminal** | xterm.js tabs backed by tmux on the host, so sessions survive closing the browser. iPhone gets an extra key row. |
@@ -60,6 +61,10 @@
     <td><img src="docs/screenshots/settings-users.png" alt="Settings page with user roles, sign-up toggle and sign-in background"><br><sub><b>Users and settings.</b> Approve sign-ups, change roles, pick backgrounds.</sub></td>
     <td><img src="docs/screenshots/claude.png" alt="Claude chat empty state with suggested questions"><br><sub><b>Claude.</b> Asks about your server; actions need your tap.</sub></td>
   </tr>
+  <tr>
+    <td><img src="docs/screenshots/store.png" alt="App store with the most-downloaded app per category and a grid of apps with download counts and memory"><br><sub><b>Store.</b> Most-downloaded first, search and categories.</sub></td>
+    <td><img src="docs/screenshots/store-detail.png" alt="Install panel for Immich with stack name, ports, data folders and a sleep-when-idle option"><br><sub><b>Install.</b> Ports, folders and idle sleep; view the compose file first.</sub></td>
+  </tr>
 </table>
 
 <p align="center">
@@ -79,6 +84,7 @@ browser ──(Tailscale)──► harbor (Node/Fastify) ──► docker-socket
 ```
 
 - **Backend:** Node 22 + TypeScript + Fastify. One collection loop reads `/proc`, `/sys` and Intel RAPL, and pushes to every open tab over a single multiplexed WebSocket.
+- **Store installs:** `docker compose` runs on the host over SSH (see [App store](#app-store)), not through the proxy.
 - **Docker:** only through [`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy) with list, inspect, logs, events, start, stop and restart. The raw socket is never mounted into the web container.
 - **Frontend:** Preact + signals + Vite. Charts are canvas on one shared `requestAnimationFrame` loop that pauses while the tab is hidden.
 - **Storage:** SQLite for apps, settings, accounts, energy history and Claude conversations.
@@ -130,6 +136,25 @@ Click **Add app** in the sidebar. You can set:
 Link-only apps (no container) work too. Everything is saved on the server.
 
 Some apps refuse to load inside an iframe because of `X-Frame-Options` or a CSP `frame-ancestors` header. For those, remove the header in your reverse proxy, or use **Open in new tab**.
+
+## App store
+
+**Store** in the sidebar (admins only) lists the [CasaOS AppStore](https://github.com/IceWhaleTech/CasaOS-AppStore) catalog (Apache-2.0), with pull counts from Docker Hub. The catalog is fetched on first visit (about 20 seconds: only each app's compose file and icon, not the 250 MB repo) and cached in `data/store/`. **Update catalog** fetches it again.
+
+When you install an app, HarborOS rewrites its compose file for your server:
+
+- `/DATA/AppData` becomes your app data folder and the rest of `/DATA` becomes your media folder (defaults `/srv/harbor/appdata` and `/srv/harbor/media`, remembered for next time)
+- ports you pick replace the catalog's; ports other containers already use are refused
+- devices and host folders your machine doesn't have (many entries target Raspberry Pi) are removed, and the panel lists what was removed
+- privileged containers, the host network, the Docker socket and mounts of `/`, `/etc` and similar need an extra confirmation
+- **View compose** shows the exact file before you install
+
+It then runs `docker compose up -d` **on the host** over the terminal's SSH connection, so the user from `host/setup-terminal.sh` must be in the `docker` group. Stacks live in `~/harbor-stacks/<name>/` on the host as ordinary compose projects. The docker-socket-proxy keeps its start/stop-only permissions; it never gets image pull or create rights. Progress streams into the panel, and the finished app appears in the sidebar with start on demand, plus a 30-minute idle stop if you left **Sleep when idle** on.
+
+**Uninstall** runs `docker compose down` and removes the stack folder. Its data is only deleted if you tick the box.
+
+> [!NOTE]
+> Catalog entries are maintained by the CasaOS community. Read the compose file for anything you don't recognise; image tags in the catalog can lag behind upstream.
 
 ## Dashboard widgets
 

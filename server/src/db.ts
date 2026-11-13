@@ -53,6 +53,8 @@ export interface Settings {
   sidebarCollapsed: boolean;
   allowSignup: boolean;        // new accounts still need an admin's approval
   loginBackground: { module: string; dim: number; blur: number };
+  storeDataRoot: string;       // replaces CasaOS /DATA/AppData
+  storeMediaRoot: string;      // replaces the rest of /DATA
 }
 
 const defaults: Settings = {
@@ -65,6 +67,8 @@ const defaults: Settings = {
   sidebarCollapsed: false,
   allowSignup: true, // accounts stay "pending" until an admin approves them
   loginBackground: { module: "aura", dim: 0, blur: 0 },
+  storeDataRoot: "/srv/harbor/appdata",
+  storeMediaRoot: "/srv/harbor/media",
 };
 
 export const settings = {

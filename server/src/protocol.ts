@@ -48,6 +48,33 @@ export interface Stats {
   tailscale?: { online: boolean; ip?: string };
 }
 
+export interface StoreApp {
+  id: string;                 // folder name in the catalog repo, e.g. "Immich"
+  name: string;               // compose project name it ships with
+  title: string;
+  tagline: string;
+  description: string;
+  category: string;
+  author: string;
+  icon: string;
+  main: string;               // main service
+  image: string;              // main service image
+  services: number;
+  memMB?: number;             // catalog's memory reservation, summed
+  arch: string[];
+  webPort?: number;           // published port of the web UI
+  index: string;
+  scheme: "http" | "https";
+  ports: { service: string; target: number; published?: number; protocol: string; description: string }[];
+  envs: { service: string; name: string; description: string }[];
+  tips?: string;
+  pulls?: number;             // Docker Hub pull count of the main image
+}
+
+export interface StoreInstall { project: string; app: string; appId: string; created: number; dataRoot: string; ports: number[] }
+
+export interface StoreJob { project: string; app: string; op: "install" | "uninstall"; phase: "running" | "done" | "error"; line?: string }
+
 export interface BootEvent { app: string; phase: "starting" | "waiting" | "ready" | "error"; line?: string; elapsed: number }
 
 // client -> server
@@ -64,4 +91,5 @@ export type ServerMsg =
   | { t: "apps"; d: (AppConfig & { status: AppStatus })[] }
   | { t: "boot"; d: BootEvent }
   | { t: "log"; id: string; line: string }
-  | { t: "widgets"; changed: string[] };
+  | { t: "widgets"; changed: string[] }
+  | { t: "store"; d: StoreJob };

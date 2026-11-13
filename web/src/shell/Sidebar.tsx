@@ -77,6 +77,7 @@ export function Sidebar() {
           <Item id="home" icon="solar:home-2-linear" label="Home" />
           {isAdmin.value && <Item id="terminal" icon="solar:programming-linear" label="Terminal" />}
           {isAdmin.value && <Item id="ai" icon="solar:magic-stick-3-linear" label="Claude" />}
+          {isAdmin.value && <Item id="store" icon="solar:shop-2-linear" label="Store" />}
 
           {sections.map((s) => (
             <div key={s}>

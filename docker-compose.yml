@@ -31,6 +31,7 @@ services:
       HOST_SYS: /host/sys
       DATA_DIR: /data
       DISK_PATHS: /host/root=/   # e.g. "/host/root=/,/host/data=/mnt/data"
+      HOST_ROOT: /host/root      # store: checks which devices and folders the host has
       TERMINAL_MODE: ssh
       TERMINAL_SSH_TARGET: ${TERMINAL_SSH_USER:-harbor}@host.docker.internal
     extra_hosts:

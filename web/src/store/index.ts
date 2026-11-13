@@ -21,7 +21,7 @@ export const apps = signal<App[]>([]);
 export const boots = signal<Record<string, BootEvent & { lines: string[] }>>({});
 export const settings = signal<Settings | null>(null);
 
-/** "home" | "terminal" | "ai" | "settings" | app id */
+/** "home" | "terminal" | "ai" | "store" | "settings" | app id */
 export const view = signal<string>(location.hash.slice(1) || "home");
 export const sidebarOpen = signal(false); // mobile drawer
 export const dialog = signal<null | { kind: "add-app"; app?: App } | { kind: "logs"; container: string }>(null);

@@ -36,6 +36,7 @@ export async function api<T = any>(path: string, init?: RequestInit & { json?: u
   });
   if (r.status === 401 && path !== "/api/login") { location.reload(); throw new Error("Signed out"); }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error ?? j.message ?? `Request failed (${r.status})`);
+  // Fastify errors are { error: "Bad Request", message: "<ours>" }; our own replies are { error }.
+  if (!r.ok) throw new Error(j.message ?? j.error ?? `Request failed (${r.status})`);
   return j as T;
 }

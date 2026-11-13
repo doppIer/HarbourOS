@@ -15,6 +15,7 @@ async function api(p: string, init?: RequestInit) {
 export interface RawContainer {
   Id: string; Names: string[]; Image: string; State: string; Status: string;
   Labels: Record<string, string>;
+  Ports?: { PublicPort?: number; PrivatePort: number; Type: string }[];
 }
 
 export const docker = {

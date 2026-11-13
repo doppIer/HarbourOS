@@ -8,7 +8,7 @@ DATA_DIR="$(pwd)/data"
 
 apt-get install -y tmux openssh-server >/dev/null
 id "$USER_NAME" >/dev/null 2>&1 || useradd -m -s /bin/bash "$USER_NAME"
-# Optional: let this user manage docker / run claude. Remove if you don't want that.
+# The app store runs `docker compose` as this user, so it needs the docker group.
 usermod -aG docker "$USER_NAME" || true
 
 mkdir -p "$DATA_DIR/ssh"

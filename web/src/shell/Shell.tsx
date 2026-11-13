@@ -9,11 +9,12 @@ import { ContextMenuHost } from "./ContextMenu";
 
 const Terminal = lazy(() => import("../apps/terminal/Terminal"));
 const AI = lazy(() => import("../apps/ai/AI"));
+const Store = lazy(() => import("../apps/store/Store"));
 const SettingsView = lazy(() => import("../dialogs/Settings"));
 const AddApp = lazy(() => import("../dialogs/AddApp"));
 const LogDrawer = lazy(() => import("../dialogs/LogDrawer"));
 
-const TITLES: Record<string, string> = { home: "Home", terminal: "Terminal", ai: "Claude", settings: "Settings" };
+const TITLES: Record<string, string> = { home: "Home", terminal: "Terminal", ai: "Claude", store: "Store", settings: "Settings" };
 
 export function Shell() {
   const v = view.value;
@@ -42,6 +43,7 @@ export function Shell() {
             <Suspense fallback={null}>
               {v === "terminal" && <Terminal />}
               {v === "ai" && <AI />}
+              {v === "store" && <div class="scroll"><Store /></div>}
               {v === "settings" && <div class="scroll"><SettingsView /></div>}
             </Suspense>
             {/* Apps stay mounted (hidden) so switching back is instant. */}

@@ -14,6 +14,8 @@ import { attach, killSession, listSessions } from "./terminal/pty.js";
 import { chat, approveAction, listChats, loadChat, deleteChat } from "./ai/claude.js";
 import { listWidgets, widgetDir, widgetFile } from "./widgets/store.js";
 import type { AppConfig } from "./protocol.js";
+import { catalog, findApp, iconDir as storeIcons, isRefreshing, refreshCatalog } from "./store/catalog.js";
+import { defaults, installs, jobList, render, startInstall, startUninstall, type InstallOptions } from "./store/install.js";
 
 const iconDir = path.join(env.dataDir, "icons");
 
@@ -139,6 +141,39 @@ export async function registerRoutes(app: FastifyInstance) {
     fs.writeFileSync(path.join(widgetDir, "layout.json"), JSON.stringify(req.body, null, 2));
     return { ok: true };
   });
+
+  // ---------- store (admin only: not in memberAllowed) ----------
+  app.get("/api/store", async () => {
+    const c = catalog();
+    if (!c && !isRefreshing()) refreshCatalog().catch((e) => console.error("store refresh:", e.message));
+    return { updated: c?.updated ?? 0, source: c?.source, refreshing: isRefreshing(), apps: c?.apps ?? [], installed: installs.all(), jobs: jobList() };
+  });
+  app.post("/api/store/refresh", async () => { const c = await refreshCatalog(); return { updated: c.updated, count: c.apps.length }; });
+  app.get("/store-icons/:file", async (req, reply) => {
+    const f = path.join(storeIcons, path.basename((req.params as any).file));
+    if (!fs.existsSync(f)) return reply.code(404).send();
+    reply.header("Cache-Control", "public, max-age=86400");
+    return reply.type("image/png").send(fs.createReadStream(f));
+  });
+  app.get("/api/store/apps/:id/defaults", async (req) => {
+    const a = findApp((req.params as any).id);
+    if (!a) throw Object.assign(new Error("Unknown app"), { statusCode: 404 });
+    const s = settings.get();
+    return { ...defaults(a), dataRoot: s.storeDataRoot, mediaRoot: s.storeMediaRoot };
+  });
+  app.post("/api/store/apps/:id/preview", async (req) => {
+    const a = findApp((req.params as any).id);
+    if (!a) throw Object.assign(new Error("Unknown app"), { statusCode: 404 });
+    return render(a, req.body as InstallOptions);
+  });
+  app.post("/api/store/apps/:id/install", async (req) => {
+    const o = req.body as InstallOptions;
+    const r = startInstall((req.params as any).id, o);
+    settings.set({ storeDataRoot: o.dataRoot, storeMediaRoot: o.mediaRoot }); // remember for next time
+    return r;
+  });
+  app.post("/api/store/installed/:project/uninstall", async (req) =>
+    startUninstall((req.params as any).project, !!(req.body as any)?.removeData));
 
   // ---------- terminal ----------
   app.get("/api/terminal/sessions", async () => listSessions());
