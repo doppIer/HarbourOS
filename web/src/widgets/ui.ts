@@ -93,6 +93,15 @@ function downsample(a: number[], n: number) {
   return out;
 }
 
+// Centered moving average; keeps the length so the x axis is unchanged.
+function smooth(a: number[], r: number) {
+  return a.map((_, i) => {
+    let s = 0, c = 0;
+    for (let j = Math.max(0, i - r); j <= Math.min(a.length - 1, i + r); j++) { s += a[j]; c++; }
+    return s / c;
+  });
+}
+
 // ---------- sparkline (small tiles) ----------
 export function sparkline(parent: HTMLElement, o: { color?: string; height?: number; max?: number; points?: number } = {}) {
   const { ctx, size, c } = canvas(parent, o.height ?? 30);
@@ -128,23 +137,31 @@ export function area(parent: HTMLElement, o: { max?: number; points?: number; tr
     const { w, h: H } = size();
     ctx.clearRect(0, 0, w, H);
     if (!series.length) return;
-    const n = Math.min(o.points ?? 48, Math.max(...series.map((s) => s.data.length)));
+    const n = Math.min(o.points ?? 32, Math.max(...series.map((s) => s.data.length)));
     if (n < 2) return;
-    const ds = series.map((s) => downsample(s.data, n));
-    const max = o.max ?? Math.max(1, ...ds.flat()) * 1.25;
+    const ds = series.map((s) => smooth(downsample(s.data, n), Math.max(1, Math.round(n / 6))));
     const top = 50;
+    // Each series gets its own range so a steady 60% RAM doesn't flatten a
+    // 4% CPU line; exact values are in the trend card.
+    const ys = ds.map((d, k) => {
+      const lo = Math.min(...d), hi = Math.max(...d), span = Math.max(hi - lo, hi * 0.15, 1e-9);
+      return (v: number) => { const f = 0.32 - k * 0.09 + 0.62 * ((v - lo) / span); return H - f * (H - top); };
+    });
     // Draw the largest series first so smaller ones stay visible on top.
     const mean = (d: number[]) => d.reduce((a, b) => a + b, 0) / (d.length || 1);
     const order = ds.map((_, i) => i).sort((a, b) => mean(ds[b]) - mean(ds[a]));
     order.forEach((si) => {
       const d = ds[si];
       const col = series[si].color;
-      const pts = d.map((v, i) => [(i / (d.length - 1)) * w, H - (v / max) * (H - top)] as [number, number]);
-      const g = ctx.createLinearGradient(0, top, 0, H);
-      g.addColorStop(0, col + "b0"); g.addColorStop(1, theme.blue + "40");
+      const pts = d.map((v, i) => [(i / (d.length - 1)) * w, ys[si](v)] as [number, number]);
+      const peak = Math.min(...pts.map((p) => p[1]));
+      const g = ctx.createLinearGradient(0, peak, 0, H);
+      g.addColorStop(0, col + "c8"); g.addColorStop(0.55, col + "66"); g.addColorStop(1, theme.blue + "88");
       ctx.beginPath(); smoothPath(ctx, pts); ctx.lineTo(w, H); ctx.lineTo(0, H); ctx.closePath();
-      ctx.globalAlpha = 0.8; ctx.fillStyle = g; ctx.fill(); ctx.globalAlpha = 1;
-      ctx.beginPath(); smoothPath(ctx, pts); ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.globalAlpha = 0.85; ctx.fillStyle = g; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 8;
+      ctx.beginPath(); smoothPath(ctx, pts); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+      ctx.restore();
     });
     if (hover != null) {
       const x = hover * w;
@@ -152,7 +169,7 @@ export function area(parent: HTMLElement, o: { max?: number; points?: number; tr
       ctx.beginPath(); ctx.moveTo(x, 18); ctx.lineTo(x, H - 6); ctx.stroke(); ctx.setLineDash([]);
       const i = Math.round(hover * (n - 1));
       ds.forEach((d, si) => {
-        const y = H - (d[i] / max) * (H - top);
+        const y = ys[si](d[i]);
         ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill();
         ctx.lineWidth = 2; ctx.strokeStyle = series[si].color; ctx.stroke();
       });
