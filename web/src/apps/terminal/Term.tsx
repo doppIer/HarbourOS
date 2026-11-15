@@ -1,5 +1,7 @@
 // One xterm.js instance attached to one tmux session over WebSocket.
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { api } from "../../lib/ws";
+import { Icon } from "../../icons/Icon";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -20,6 +22,7 @@ export function Term({ session, program, visible, onReady, ctrl }: {
   const el = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon>();
   const termRef = useRef<Terminal>();
+  const [link, setLink] = useState<string | null>(null);
 
   useEffect(() => {
     const term = new Terminal({
@@ -31,6 +34,12 @@ export function Term({ session, program, visible, onReady, ctrl }: {
     term.open(el.current!);
     fitRef.current = fit; termRef.current = term;
 
+    // Long links (Claude Code's sign-in link) wrap over several lines or get cut
+    // at the edge, so xterm can't make them clickable. Watch the screen for one
+    // and offer an "Open" button instead.
+    let scanT: number | undefined;
+    const scan = () => { clearTimeout(scanT); scanT = window.setTimeout(() => setLink(findLink(term)), 250); };
+
     let ws: WebSocket | null = null;
     let closed = false;
     const sendResize = () => ws?.readyState === 1 && ws.send("\u0000" + JSON.stringify({ t: "resize", cols: term.cols, rows: term.rows }));
@@ -38,7 +47,7 @@ export function Term({ session, program, visible, onReady, ctrl }: {
       const q = program ? `?program=${program}` : "";
       ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/term/${encodeURIComponent(session)}${q}`);
       ws.onopen = () => { fit.fit(); sendResize(); };
-      ws.onmessage = (e) => term.write(typeof e.data === "string" ? e.data : new Uint8Array(e.data));
+      ws.onmessage = (e) => { term.write(typeof e.data === "string" ? e.data : new Uint8Array(e.data)); scan(); };
       ws.onclose = () => { if (!closed) { term.write("\r\n\x1b[90m[disconnected — reconnecting…]\x1b[0m\r\n"); setTimeout(open, 1500); } };
     };
     open();
@@ -62,5 +71,60 @@ export function Term({ session, program, visible, onReady, ctrl }: {
 
   useEffect(() => { if (visible) requestAnimationFrame(() => { fitRef.current?.fit(); termRef.current?.focus(); }); }, [visible]);
 
-  return <div ref={el} style={{ position: "absolute", inset: "8px 8px 8px 12px", display: visible ? "block" : "none" }} />;
+  const openLink = async (copy = false) => {
+    if (!link) return;
+    // Open the tab right away (inside the click) so the popup blocker allows it.
+    const w = copy ? null : window.open("about:blank", "_blank");
+    if (w) w.opener = null;
+    // The screen copy may be cut off; tmux's buffer has the whole link when the program copied it.
+    let url = link;
+    try {
+      const { text } = await api<{ text: string }>("/api/terminal/buffer");
+      const full = text.match(/https?:\/\/\S+/)?.[0];
+      if (full && full.startsWith(link.slice(0, 40))) url = full;
+    } catch {}
+    if (copy) copyText(url); else if (w) w.location.href = url; else window.open(url, "_blank", "noopener");
+  };
+
+  return (
+    <>
+      <div ref={el} style={{ position: "absolute", inset: "8px 8px 8px 12px", display: visible ? "block" : "none" }} />
+      {visible && link && (
+        <div class="term-link">
+          <Icon name="solar:link-linear" size={15} />
+          <span class="mono">{new URL(link).host}</span>
+          <button class="btn primary" onClick={() => openLink()}>Open link</button>
+          <button class="btn" onClick={() => openLink(true)}>Copy</button>
+          <button class="iconbtn" aria-label="Hide" onClick={() => setLink(null)}><Icon name="solar:close-circle-linear" size={16} /></button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** The last long link on screen, with lines that a program wrapped joined back up. */
+function findLink(term: Terminal): string | null {
+  const b = term.buffer.active, lines: string[] = [];
+  for (let y = Math.max(0, b.length - term.rows - 20); y < b.length; y++) lines.push(b.getLine(y)?.translateToString(true) ?? "");
+  let found: string | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/https?:\/\/[^\s]+$/);
+    if (!m) continue;
+    let url = m[0];
+    // Following lines that are nothing but URL characters continue it.
+    for (let j = i + 1; j < lines.length; j++) {
+      const t = lines[j].trim();
+      if (!t || !/^[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+$/.test(t)) break;
+      url += t; i = j;
+    }
+    if (url.length > 60) found = url;
+  }
+  return found;
+}
+
+/** navigator.clipboard is missing over plain http, so fall back to a hidden textarea. */
+function copyText(t: string) {
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t); return; }
+  const a = document.createElement("textarea"); a.value = t; a.style.position = "fixed"; a.style.opacity = "0";
+  document.body.append(a); a.select(); document.execCommand("copy"); a.remove();
 }

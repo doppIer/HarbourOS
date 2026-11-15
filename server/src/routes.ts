@@ -1,3 +1,4 @@
+import { hostExec } from "./host.js";
 import { demo } from "./demo.js";
 import { discover, probe, type Found } from "./apps/discover.js";
 import fs from "node:fs";
@@ -42,6 +43,15 @@ export async function registerRoutes(app: FastifyInstance) {
     const { name } = req.params as { name: string };
     const { program } = req.query as { program?: string };
     attach(socket, name, program === "claude" ? "claude" : undefined);
+  });
+
+  // ---------- terminal ----------
+  // Text that a terminal program copied into tmux's buffer (Claude Code puts
+  // its sign-in link there). Lets the browser open links that are too long
+  // to show on one line. Admin only (not in memberAllowed).
+  app.get("/api/terminal/buffer", async () => {
+    const r = await hostExec("tmux show-buffer 2>/dev/null", undefined, 64 * 1024);
+    return { text: r.code === 0 ? r.out.toString("utf8").slice(0, 16000) : "" };
   });
 
   // ---------- apps ----------
