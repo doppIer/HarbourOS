@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Puts HarborOS on https://<this-machine>.<tailnet>.ts.net with a real
 # certificate, using Tailscale Serve. Only devices on your tailnet can reach it.
-# The tablet's microphone (AI Talk) only works over https.
 #
 #   sudo bash host/setup-https.sh          # HarborOS on port 7080 (default)
 #   sudo bash host/setup-https.sh off      # stop serving it over https

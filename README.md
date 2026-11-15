@@ -279,7 +279,7 @@ docs/         brand assets and screenshots
 
 ## HTTPS
 
-The tablet's microphone (AI Talk) only works on an https page. Tailscale Serve gives HarborOS a real certificate on your tailnet name, reachable only from your own devices:
+Browsers only allow some features (microphone, camera, installing as an app) on https pages. Tailscale Serve gives HarborOS a real certificate on your tailnet name, reachable only from your own devices:
 
 1. In the Tailscale admin console, turn on **MagicDNS** and **HTTPS certificates** (DNS page).
 2. On the server, in the HarborOS folder: `sudo bash host/setup-https.sh`
@@ -293,14 +293,6 @@ The old `http://<tailscale-ip>:7080` keeps working. On the https address, apps t
 2. On the tablet, long press any tile to edit: add tiles, resize, reorder, and open **Screen** for dimming, burn-in protection and the screensaver.
 3. Keeping the screen on needs HarborOS over https. With Tailscale: `sudo tailscale serve --bg 7080`, then use `https://<machine>.<tailnet>.ts.net/wall`. On Android, a kiosk browser (e.g. Fully Kiosk) can keep the screen on instead.
 
-
-## Voice
-
-The wall's AI Talk (English for now) speaks through one of these (Settings → Assistant → Voice):
-
-- **Kokoro + Piper** (default): two small containers in `docker-compose.yml`, all on your server. Kokoro sounds very natural; Piper is the light backup when Kokoro is down. Kokoro's image is about 2 GB; remove the `kokoro` service if you don't want it and Piper speaks instead.
-- **ElevenLabs**: paste your API key and a voice ID. The key stays on the server.
-- **Tablet's own voice**: no server needed. On an iPad, download an "Enhanced" voice under Settings → Accessibility → Spoken Content → Voices for a much better sound.
 
 ## Credits
 

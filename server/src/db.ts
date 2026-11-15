@@ -55,8 +55,7 @@ export interface Settings {
   loginBackground: { module: string; dim: number; blur: number };
   storeDataRoot: string;       // replaces CasaOS /DATA/AppData
   storeMediaRoot: string;      // replaces the rest of /DATA
-  assistant?: Partial<import("./assistant.js").AssistantSettings>;
-  music?: import("./assistant.js").MusicSettings;
+  music?: import("./music.js").MusicSettings;
 }
 
 const defaults: Settings = {
@@ -85,10 +84,9 @@ export const settings = {
   },
   /** Settings safe for the browser (no HA token). */
   public(): Omit<Settings, "haToken"> & { hasHaToken: boolean; hasMusicPass: boolean } {
-    const { haToken, music, assistant, ...rest } = settings.get();
-    const { elevenKey, ...voice } = (assistant?.voice ?? {}) as any;
+    const { haToken, music, ...rest } = settings.get();
     const { navidromePass, ...m } = music ?? { navidromeUrl: "", navidromeUser: "" };
-    return { ...rest, ...(assistant ? { assistant: { ...assistant, voice } } : {}), music: m, hasHaToken: !!haToken, hasMusicPass: !!navidromePass, hasElevenKey: !!elevenKey } as any;
+    return { ...rest, music: m, hasHaToken: !!haToken, hasMusicPass: !!navidromePass };
   },
 };
 

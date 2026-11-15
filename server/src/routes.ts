@@ -152,8 +152,7 @@ export async function registerRoutes(app: FastifyInstance) {
     const b = req.body as any;
     // The Navidrome password is never sent to the browser; keep it unless a new one comes in.
     if (b?.music) b.music = { ...b.music, navidromePass: b.music.navidromePass || settings.get().music?.navidromePass };
-    if (b?.assistant?.voice) b.assistant.voice = { ...b.assistant.voice, elevenKey: b.assistant.voice.elevenKey || (settings.get().assistant as any)?.voice?.elevenKey };
-    delete b?.hasMusicPass; delete b?.hasHaToken; delete b?.hasElevenKey;
+    delete b?.hasMusicPass; delete b?.hasHaToken;
     settings.set(b); return settings.public();
   });
 

@@ -273,15 +273,6 @@ export async function registerTransit(app: FastifyInstance) {
   });
 }
 
-/** Next departures for a list of picks (used by the assistant). */
-export async function boardFor(city: string, picks: { line: string; to?: string; stop: string }[]) {
-  const fd = await feed(city);
-  return picks.slice(0, 12).map((p) => {
-    try { return { ...p, stop: stopName(fd, p.stop), departures: departures(fd, p.stop, (r, t) => lineId(r) === p.line && (!p.to || t.head === p.to)).slice(0, 3) }; }
-    catch (e) { return { ...p, error: (e as Error).message, departures: [] }; }
-  });
-}
-
 // ---------------- iCalendar ----------------
 const icsCache = new Map<string, { at: number; text: string }>();
 // Only calendar services, so this can't be used to poke at other machines.

@@ -3,15 +3,14 @@
 // tile to edit; the screen behaviour (night dimming, wake on touch, burn-in
 // shift, screensaver, keep awake) is set per tablet in "Screen".
 import { useEffect, useRef, useState } from "preact/hooks";
-import { apps, isAdmin, me, settings, opensInTab, type App } from "../store";
+import { apps, isAdmin, me, opensInTab, type App } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { Tile, type LayoutItem, type Size } from "../widgets/runtime";
 import { appSrc } from "../shell/AppHost";
 import { BackgroundLayer, ASCII_CREDIT } from "../shell/Background";
-import { Talk, DJ } from "./Sections";
+import { DJ } from "./DJ";
 import { NowPlaying, current as nowTrack } from "./player";
-import * as V from "./voice";
 
 export interface Screen {
   dim: { on: boolean; from: string; to: string; level: number };
@@ -54,25 +53,7 @@ export function Wall() {
   const [editing, setEditing] = useState(false);
   const [sheet, setSheet] = useState<null | "add" | "screen" | "layouts" | { opts: number }>(null);
   const [open, setOpen] = useState<App | null>(null);
-  const [section, setSection] = useState<"tiles" | "talk" | "dj">("tiles");
-  const wakeWord = settings.value?.assistant?.wakeWord || "hey harbor";
-
-  // The assistant answers "next bus" and "what's on today" from this wall's own tiles.
-  useEffect(() => {
-    if (!p) return;
-    const bus = p.layout.find((i) => i.widget === "bus")?.opts, cal = p.layout.find((i) => i.widget === "calendar")?.opts;
-    let picks: unknown[] = [];
-    try { picks = JSON.parse(bus?.picks || "[]"); } catch {}
-    V.setup({ picks, city: bus?.gtfs || bus?.city || "riga", calendar: cal?.url }, () => { setOpen(null); setSection("talk"); });
-  }, [p]);
-  useEffect(() => { V.setWakeWord(wakeWord); V.resumeWake(); }, [wakeWord]);
-  // "Play some music" from AI Talk: show the player starting, then go back to the tiles.
-  const music = V.lastMusic.value;
-  useEffect(() => {
-    if (!music || section !== "talk") return;
-    const t = setTimeout(() => setSection("tiles"), 2600);
-    return () => clearTimeout(t);
-  }, [music]);
+  const [section, setSection] = useState<"tiles" | "dj">("tiles");
 
   useEffect(() => { api<Profile>("/api/wall/profile").then(setP).catch((e) => setErr(e.message)); }, []);
   const save = (n: Profile) => { setP(n); api("/api/wall/profile", { method: "PUT", json: { layout: n.layout, screen: n.screen, look: n.look, custom: n.custom } }).catch((e) => setErr(e.message)); };
@@ -110,7 +91,6 @@ export function Wall() {
       <nav class="wall-rail" aria-label="Wall">
         {me.value?.role !== "device" && <a class="wall-rail-btn" href="/" aria-label="Back to the desktop" title="Desktop"><Icon name="solar:home-2-linear" size={24} /></a>}
         <button class={`wall-rail-btn ${section === "tiles" && !editing ? "on" : ""}`} aria-label="Tiles" title="Tiles" onClick={() => setSection("tiles")}><Icon name="solar:widget-4-linear" size={22} /></button>
-        <button class={`wall-rail-btn ${section === "talk" ? "on" : ""} ${V.phase.value === "wake" ? "listening" : ""}`} aria-label="AI Talk" title="AI Talk" onClick={() => setSection("talk")}><Icon name="solar:microphone-3-linear" size={22} /></button>
         <button class={`wall-rail-btn ${section === "dj" ? "on" : ""}`} aria-label="DJ" title="DJ" onClick={() => setSection("dj")}><Icon name="solar:music-library-2-linear" size={22} /></button>
         <span class="wall-rail-sep" />
         <button class={`wall-rail-btn ${editing ? "on" : ""}`} aria-label="Edit tiles" title="Edit tiles" onClick={() => { setSection("tiles"); setEditing(!editing); }}><Icon name="solar:pen-2-linear" size={22} /></button>
@@ -122,7 +102,7 @@ export function Wall() {
       </nav>
       {section !== "tiles" && (
         <div class="wall-section" key={section} style={{ transform: fx.shift }}>
-          {section === "talk" ? <Talk wakeWord={wakeWord} /> : <DJ />}
+          <DJ />
         </div>
       )}
       <div class={`wall-inner ${section === "tiles" ? "sec-in" : "sec-hidden"} ${nowTrack.value ? "with-np" : ""}`} style={{ transform: fx.shift }}>

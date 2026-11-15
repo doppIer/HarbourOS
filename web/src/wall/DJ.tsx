@@ -1,51 +1,8 @@
-// The wall's two extra sections: AI Talk (voice) and DJ (browse and play).
+// DJ mode: browse your Navidrome library on the wall tablet and play it.
 import { useEffect, useRef, useState } from "preact/hooks";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
-import * as V from "./voice";
 import * as P from "./player";
-
-// ---------------- AI Talk ----------------
-const SUGGEST = ["Play some music", "When is the next bus?", "What's on today?", "Pause", "What time is it?"];
-
-export function Talk({ wakeWord }: { wakeWord: string }) {
-  const [typed, setTyped] = useState("");
-  const ph = V.phase.value;
-  const send = (t: string) => { if (t.trim()) { V.ask(t.trim()); setTyped(""); } };
-  const title = ph === "listening" ? "Listening…" : ph === "thinking" ? "Thinking…" : ph === "wake" ? `Say “${cap(wakeWord)}”` : ph === "answer" ? "" : "Tap to talk";
-  return (
-    <div class="talk">
-      <div class="talk-top">
-        <label class={`talk-wake ${V.wakeOn.value ? "on" : ""}`}>
-          <input type="checkbox" checked={V.wakeOn.value} disabled={!V.canListen} onChange={(e) => V.setWake(e.currentTarget.checked)} />
-          <span class="sw" /> Listen for “{cap(wakeWord)}”
-        </label>
-      </div>
-
-      <button class={`orb ${ph}`} aria-label="Talk" disabled={!V.canListen || ph === "thinking"} onClick={() => (ph === "listening" ? V.setWake(V.wakeOn.value) : V.listen())}>
-        <span class="orb-ring" /><span class="orb-ring r2" /><span class="orb-core"><Icon name="solar:microphone-3-linear" size={44} /></span>
-      </button>
-
-      <div class="talk-text" aria-live="polite">
-        {title && <div class="talk-state">{title}</div>}
-        {V.heard.value && <div class="talk-heard">“{V.heard.value}”</div>}
-        {V.answer.value && <div class="talk-answer">{V.answer.value}{V.via.value && <span class="talk-via">{VIA[V.via.value] ?? V.via.value}</span>}</div>}
-        {V.err.value && <div class="talk-err">{V.err.value}</div>}
-        {!V.canListen && <div class="talk-err soft">{V.whyNot}</div>}
-      </div>
-
-      <div class="talk-chips">
-        {SUGGEST.map((s) => <button class="chip" onClick={() => send(s)}>{s}</button>)}
-      </div>
-      <form class="talk-type" onSubmit={(e) => { e.preventDefault(); send(typed); }}>
-        <input class="input" placeholder="Or type here…" value={typed} onInput={(e) => setTyped(e.currentTarget.value)} />
-        <button class="btn primary wall-btn" disabled={!typed.trim()}><Icon name="solar:plain-2-linear" size={18} />Send</button>
-      </form>
-    </div>
-  );
-}
-const VIA: Record<string, string> = { rules: "command", router: "router model", ollama: "Ollama", claude: "Claude", session: "AI session" };
-const cap = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
 // ---------------- DJ ----------------
 interface Album { id: string; name: string; artist: string; cover?: string; year?: number }
@@ -109,7 +66,7 @@ export function DJ() {
         <button class="btn wall-btn" onClick={shuffle}><Icon name="solar:shuffle-linear" size={18} />Shuffle</button>
       </div>
 
-      {err && <div class="talk-err" style={{ textAlign: "left" }}>{err}</div>}
+      {err && <div class="dj-err">{err}</div>}
 
       {found ? (
         <TrackList tracks={found} name={q} />
