@@ -283,3 +283,7 @@ docs/         brand assets and screenshots
 2. On the tablet, long press any tile to edit: add tiles, resize, reorder, and open **Screen** for dimming, burn-in protection and the screensaver.
 3. Keeping the screen on needs HarborOS over https. With Tailscale: `sudo tailscale serve --bg 7080`, then use `https://<machine>.<tailnet>.ts.net/wall`. On Android, a kiosk browser (e.g. Fully Kiosk) can keep the screen on instead.
 
+
+## Credits
+
+ASCII animal backgrounds: [ascii-animals](https://github.com/DesignerStephen1/ascii-animals) by DesignerStephen1 (MIT).

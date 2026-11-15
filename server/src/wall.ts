@@ -32,7 +32,8 @@ export interface WallScreen {
   saver: { on: boolean; minutes: number; style: "clock" | "black" };
   keepAwake: boolean;
 }
-export interface WallProfile { layout: WallItem[]; screen: WallScreen }
+export interface WallLook { theme: "dark" | "light"; glass: number; background: string } // glass: tile opacity 0-100
+export interface WallProfile { layout: WallItem[]; screen: WallScreen; look: WallLook }
 
 export const defaultProfile = (): WallProfile => ({
   layout: [
@@ -47,6 +48,7 @@ export const defaultProfile = (): WallProfile => ({
     saver: { on: false, minutes: 10, style: "clock" },
     keepAwake: true,
   },
+  look: { theme: "dark", glass: 55, background: "ascii:koi" },
 });
 
 export const profiles = {
@@ -55,7 +57,7 @@ export const profiles = {
     const d = defaultProfile();
     if (!r) return d;
     const p = JSON.parse(r.json);
-    return { layout: p.layout ?? d.layout, screen: deepMerge(d.screen, p.screen ?? {}) };
+    return { layout: p.layout ?? d.layout, screen: deepMerge(d.screen, p.screen ?? {}), look: { ...d.look, ...(p.look ?? {}) } };
   },
   put(id: string, p: WallProfile) { db.prepare("INSERT OR REPLACE INTO wall_profiles(id,json) VALUES(?,?)").run(id, JSON.stringify(p)); },
 };
@@ -71,7 +73,9 @@ function validProfile(p: any): WallProfile {
     if (typeof i?.widget !== "string" || !/^[a-z0-9-]{1,40}$/.test(i.widget) || !["s", "m", "l", "w", "tall"].includes(i.size)) throw bad();
     if (i.opts && (typeof i.opts !== "object" || JSON.stringify(i.opts).length > 2000)) throw bad();
   }
-  return { layout: p.layout, screen: deepMerge(defaultProfile().screen, p.screen) };
+  const look = { ...defaultProfile().look, ...(p.look ?? {}) };
+  if (!["dark", "light"].includes(look.theme) || !(look.glass >= 0 && look.glass <= 100) || !/^(none|ascii:[a-z]{1,20})$/.test(String(look.background))) throw bad();
+  return { layout: p.layout, screen: deepMerge(defaultProfile().screen, p.screen), look: { theme: look.theme, glass: Number(look.glass), background: look.background } };
 }
 
 // ---------- devices ----------

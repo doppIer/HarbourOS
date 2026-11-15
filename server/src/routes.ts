@@ -176,6 +176,7 @@ export async function registerRoutes(app: FastifyInstance) {
     try { user = fs.readdirSync(bgDir).filter((d) => fs.existsSync(path.join(bgDir, d, "index.js"))); } catch {}
     return [
       { name: "None", module: "none" },
+      ...["koi", "jellyfish", "butterflies", "cranes", "dragonflies"].map((a) => ({ name: `ASCII ${a}`, module: `ascii:${a}` })),
       { name: "Template (blank)", module: "/backgrounds/template/index.js" },
       ...user.map((d) => ({ name: d, module: `/user-backgrounds/${d}/index.js` })),
     ];

@@ -365,3 +365,16 @@ a.it, a.btn { text-decoration: none; }
 @media (max-width: 760px) { .agents { grid-template-columns: 1fr; } }
 .sec-act { margin-left: auto; width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 5px; background: none; color: var(--t4); cursor: pointer; opacity: .7; }
 .sec-act:hover { background: var(--hover); color: var(--t1); opacity: 1; }
+
+/* Wall look: see-through tiles over the background, dark or light. */
+.wall .wall-inner { z-index: 1; }
+.wall-cell > .tile { background: rgb(15 16 17 / var(--glass, .55)); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); border-color: rgba(255,255,255,.09); }
+.wall.light { --bg: #eef0f3; --raise: rgba(0,0,0,.03); --hover: rgba(0,0,0,.05); --active: rgba(0,0,0,.08); --line: rgba(0,0,0,.09); --line-2: rgba(0,0,0,.16);
+  --t1: #111214; --t2: #2b2e33; --t3: #5d626b; --t4: #868b93; color: var(--t1); }
+.wall.light .wall-cell > .tile { background: rgb(255 255 255 / var(--glass, .55)); border-color: rgba(0,0,0,.08); color: var(--t1); }
+/* Widgets written for dark mode use fixed light colours; darken them here. */
+.wall.light .tile [style*="rgb(243, 233, 220)"], .wall.light .tile [style*="rgb(247, 248, 248)"] { color: var(--t1) !important; }
+.wall.light .tile [style*="rgba(255, 255, 255, 0.07)"] { border-color: var(--line) !important; }
+.wall.light .wall-edit .iconbtn, .wall.light .wall-edit .btn { background: #fff; }
+.wall.light .wall-bar { background: rgba(255,255,255,.8); }
+.seg { display: inline-flex; gap: 4px; }

@@ -3,6 +3,7 @@ import { settings, saveSettings, me, isAdmin, type Settings, type Me } from "../
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { WeatherPlace } from "../wall/Wall";
+import { ASCII_CREDIT } from "../shell/Background";
 
 type Bg = { name: string; module: string };
 
@@ -123,6 +124,10 @@ function Users() {
 }
 
 // ---------------- everything else (admin) ----------------
+export function Credit() {
+  return <span class="dim" style={{ fontSize: 12 }}>ASCII animals: <a href={ASCII_CREDIT.url} target="_blank" rel="noopener">{ASCII_CREDIT.name}</a> (MIT)</span>;
+}
+
 function BgPicker({ list, value, onChange, extra }: { list: Bg[]; value: string; onChange: (m: string) => void; extra?: Bg[] }) {
   const all = [...(extra ?? []), ...list];
   const known = all.some((b) => b.module === value);
@@ -133,6 +138,7 @@ function BgPicker({ list, value, onChange, extra }: { list: Bg[]; value: string;
         <option value="__custom">Custom URL…</option>
       </select>
       {!known && <input class="input" placeholder="/user-backgrounds/my-scene/index.js or an image/video URL" value={value} onInput={(e) => onChange(e.currentTarget.value)} />}
+      {value.startsWith("ascii:") && <Credit />}
     </>
   );
 }

@@ -8,6 +8,7 @@ import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { Tile, type LayoutItem, type Size } from "../widgets/runtime";
 import { appSrc } from "../shell/AppHost";
+import { BackgroundLayer, ASCII_CREDIT } from "../shell/Background";
 
 export interface Screen {
   dim: { on: boolean; from: string; to: string; level: number };
@@ -16,7 +17,9 @@ export interface Screen {
   saver: { on: boolean; minutes: number; style: "clock" | "black" };
   keepAwake: boolean;
 }
-interface Profile { id: string; name: string; layout: LayoutItem[]; screen: Screen }
+export interface Look { theme: "dark" | "light"; glass: number; background: string }
+interface Profile { id: string; name: string; layout: LayoutItem[]; screen: Screen; look: Look }
+const WALL_BGS = [["none", "None"], ["ascii:koi", "Koi"], ["ascii:jellyfish", "Jellyfish"], ["ascii:butterflies", "Butterflies"], ["ascii:cranes", "Cranes"], ["ascii:dragonflies", "Dragonflies"]];
 
 const SIZES: Size[] = ["s", "m", "l", "w", "tall"];
 const SIZE_NAME: Record<Size, string> = { s: "Small", m: "Wide", l: "Large", w: "Full width", tall: "Tall" };
@@ -35,9 +38,10 @@ export function Wall() {
   const [open, setOpen] = useState<App | null>(null);
 
   useEffect(() => { api<Profile>("/api/wall/profile").then(setP).catch((e) => setErr(e.message)); }, []);
-  const save = (n: Profile) => { setP(n); api("/api/wall/profile", { method: "PUT", json: { layout: n.layout, screen: n.screen } }).catch((e) => setErr(e.message)); };
+  const save = (n: Profile) => { setP(n); api("/api/wall/profile", { method: "PUT", json: { layout: n.layout, screen: n.screen, look: n.look } }).catch((e) => setErr(e.message)); };
   const setLayout = (layout: LayoutItem[]) => p && save({ ...p, layout });
   const setScreen = (screen: Screen) => p && save({ ...p, screen });
+  const setLook = (look: Look) => p && save({ ...p, look });
 
   const openApp = (id: string) => {
     const a = apps.value.find((x) => x.id === id);
@@ -53,7 +57,8 @@ export function Wall() {
   if (!p) return <div class="wall" />;
 
   return (
-    <div class="wall" onPointerDownCapture={fx.touch}>
+    <div class={`wall ${p.look.theme}`} style={{ "--glass": p.look.glass / 100 } as any} onPointerDownCapture={fx.touch}>
+      {p.look.background !== "none" && <BackgroundLayer module={p.look.background} theme={p.look.theme} paused={!!open || fx.dim > 0 || fx.saver} />}
       <div class="wall-inner" style={{ transform: fx.shift }}>
         {editing && (
           <div class="wall-bar">
@@ -91,7 +96,7 @@ export function Wall() {
       )}
 
       {sheet === "add" && <AddSheet close={() => setSheet(null)} add={(it) => { setLayout([...p.layout, it]); setSheet(null); }} />}
-      {sheet === "screen" && <ScreenSheet screen={p.screen} wakeLock={fx.wakeLock} close={() => setSheet(null)} onChange={setScreen} />}
+      {sheet === "screen" && <ScreenSheet screen={p.screen} look={p.look} onLook={setLook} wakeLock={fx.wakeLock} close={() => setSheet(null)} onChange={setScreen} />}
       {sheet && typeof sheet === "object" && (
         <OptionsSheet item={p.layout[sheet.opts]} close={() => setSheet(null)}
           onChange={(opts) => { const l = [...p.layout]; l[sheet.opts] = { ...l[sheet.opts], opts }; setLayout(l); }} />
@@ -247,8 +252,10 @@ function OptionsSheet({ item, close, onChange }: { item: LayoutItem; close: () =
   return <Sheet title={`${PRETTY[item.widget] ?? item.widget} tile`} close={close}>{OPTIONS[item.widget]?.(o, set)}</Sheet>;
 }
 
-function ScreenSheet({ screen, wakeLock, close, onChange }: { screen: Screen; wakeLock: string; close: () => void; onChange: (s: Screen) => void }) {
+function ScreenSheet({ screen, look, onLook, wakeLock, close, onChange }: { screen: Screen; look: Look; onLook: (l: Look) => void; wakeLock: string; close: () => void; onChange: (s: Screen) => void }) {
   const [s, setS] = useState(screen);
+  const [l, setL] = useState(look);
+  const lk = (v: Partial<Look>) => { const n = { ...l, ...v }; setL(n); onLook(n); };
   const set = <K extends keyof Screen>(k: K, v: Partial<Screen[K]> | Screen[K]) => {
     const n = { ...s, [k]: typeof v === "object" ? { ...(s[k] as object), ...v } : v } as Screen;
     setS(n); onChange(n);
@@ -256,6 +263,22 @@ function ScreenSheet({ screen, wakeLock, close, onChange }: { screen: Screen; wa
   const num = (v: string, lo: number, hi: number) => Math.max(lo, Math.min(hi, Number(v) || lo));
   return (
     <Sheet title="Screen" close={close}>
+      <div class="wall-group">
+        <b>Look</b>
+        <div class="wall-row">Mode
+          <div class="seg">
+            {(["dark", "light"] as const).map((t) => <button key={t} class={`btn ${l.theme === t ? "primary" : ""}`} onClick={() => lk({ theme: t })}>{t === "dark" ? "Dark" : "Light"}</button>)}
+          </div>
+        </div>
+        <div class="wall-row">Tile see-through <input type="range" min={0} max={90} value={100 - l.glass} onInput={(e) => lk({ glass: 100 - Number(e.currentTarget.value) })} /> <span class="mono">{100 - l.glass}%</span></div>
+        <div class="wall-row">Background
+          <select class="input" value={l.background} onChange={(e) => lk({ background: e.currentTarget.value })}>
+            {WALL_BGS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+          </select>
+        </div>
+        {l.background !== "none" && <div class="dim" style={{ fontSize: 12 }}>ASCII animals: <a href={ASCII_CREDIT.url} target="_blank" rel="noopener">{ASCII_CREDIT.name}</a> (MIT)</div>}
+      </div>
+
       <div class="wall-group">
         <label class="check"><input type="checkbox" checked={s.dim.on} onChange={(e) => set("dim", { on: e.currentTarget.checked })} /><b>Dim at night</b></label>
         <div class="wall-row" aria-disabled={!s.dim.on}>

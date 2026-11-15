@@ -5,14 +5,17 @@
 //   export function mount(el: HTMLElement, ctx: { reducedMotion: boolean }): {
 //     pause(): void; resume(): void; destroy(): void;
 //   }
-// Built-in names: "none", "aura" (the soft glow from the login screen).
+// Built-in names: "none", "aura" (the soft glow from the login screen) and
+// "ascii:<animal>" (ASCII animals by DesignerStephen1, MIT, see vendor/ascii-animals).
 import { useEffect, useRef } from "preact/hooks";
 import { settings, view, apps } from "../store";
 
 interface Handle { pause(): void; resume(): void; destroy(): void }
 
-export function BackgroundLayer({ module: mod, dim = 0, blur = 0, paused = false, pauseHidden = true }: {
-  module: string; dim?: number; blur?: number; paused?: boolean; pauseHidden?: boolean;
+export const ASCII_CREDIT = { name: "ascii-animals by DesignerStephen1", url: "https://github.com/DesignerStephen1/ascii-animals" };
+
+export function BackgroundLayer({ module: mod, dim = 0, blur = 0, paused = false, pauseHidden = true, theme = "dark" }: {
+  module: string; dim?: number; blur?: number; paused?: boolean; pauseHidden?: boolean; theme?: "light" | "dark";
 }) {
   const host = useRef<HTMLDivElement>(null);
   const handle = useRef<Handle | null>(null);
@@ -41,13 +44,26 @@ export function BackgroundLayer({ module: mod, dim = 0, blur = 0, paused = false
       return () => handle.current?.destroy();
     }
     let cancelled = false;
+    if (mod.startsWith("ascii:")) {
+      const c = document.createElement("canvas");
+      c.style.cssText = "width:100%;height:100%;display:block;font-family:var(--mono)";
+      el.appendChild(c);
+      import("../vendor/ascii-animals").then(({ AnimalEngine, ANIMAL_KEYS }) => {
+        if (cancelled) return;
+        const animal = (ANIMAL_KEYS as string[]).includes(mod.slice(6)) ? mod.slice(6) as any : "koi";
+        const e = new AnimalEngine(c, { animal, theme });
+        // Hiding the canvas stops the engine's loop (it pauses when off-screen).
+        handle.current = { pause: () => { c.style.display = "none"; }, resume: () => { c.style.display = "block"; }, destroy: () => { e.destroy(); c.remove(); } };
+      }).catch((e) => console.warn("background failed:", e));
+      return () => { cancelled = true; handle.current?.destroy(); };
+    }
     const url = mod.includes("/") ? mod : `/backgrounds/${mod}/index.js`;
     import(/* @vite-ignore */ url).then((m) => {
       if (cancelled) return;
       handle.current = m.mount(el, { reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches });
     }).catch((e) => console.warn("background module failed:", e));
     return () => { cancelled = true; handle.current?.destroy(); };
-  }, [mod]);
+  }, [mod, theme]);
 
   useEffect(() => {
     const sync = () => {
