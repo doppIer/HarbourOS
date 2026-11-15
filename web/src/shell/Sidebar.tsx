@@ -107,6 +107,9 @@ export function Sidebar() {
                   <Icon name="solar:add-circle-linear" /><span class="lbl">Add app</span>
                 </button>
               )}
+              <a class="it" href="/wall" title="Wall mode: full-screen tablet view">
+                <Icon name="solar:tablet-linear" /><span class="lbl">Wall mode</span>
+              </a>
               <Item id="settings" icon="solar:settings-linear" label="Settings" />
             </>
           )}

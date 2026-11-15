@@ -353,3 +353,4 @@ table.ct tr:hover .acts { opacity: 1; }
   .wall-cell.w, .wall-cell.l, .wall-cell.m { grid-column: span 2; }
 }
 .wall-row .input { width: auto; }
+a.it, a.btn { text-decoration: none; }

@@ -63,6 +63,7 @@ export function Wall() {
               <button class="btn wall-btn" onClick={() => setSheet("add")}><Icon name="solar:widget-add-linear" size={18} />Add tile</button>
               <button class="btn wall-btn" onClick={() => setSheet("screen")}><Icon name="solar:settings-linear" size={18} />Screen</button>
               <button class="btn wall-btn" onClick={() => document.documentElement.requestFullscreen?.().catch(() => {})}><Icon name="solar:maximize-square-linear" size={18} />Full screen</button>
+              {me.value?.role !== "device" && <a class="btn wall-btn" href="/"><Icon name="solar:arrow-left-linear" size={18} />Desktop</a>}
               <button class="btn primary wall-btn" onClick={() => setEditing(false)}><Icon name="solar:check-circle-linear" size={18} />Done</button>
             </span>
           </div>
