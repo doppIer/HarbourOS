@@ -3,7 +3,7 @@
 // tile to edit; the screen behaviour (night dimming, wake on touch, burn-in
 // shift, screensaver, keep awake) is set per tablet in "Screen".
 import { useEffect, useRef, useState } from "preact/hooks";
-import { apps, isAdmin, me, settings, type App } from "../store";
+import { apps, isAdmin, me, settings, opensInTab, type App } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { Tile, type LayoutItem, type Size } from "../widgets/runtime";
@@ -95,7 +95,7 @@ export function Wall() {
     const a = apps.value.find((x) => x.id === id);
     if (!a) return;
     if (a.status !== "running" && a.status !== "link") api(`/api/apps/${a.id}/open`, { method: "POST" }).catch(() => {});
-    if (a.openMode === "tab") { window.open(a.url, "_blank", "noopener"); return; }
+    if (opensInTab(a)) { window.open(a.url, "_blank", "noopener"); return; }
     setOpen(a);
   };
 

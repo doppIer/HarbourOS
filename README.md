@@ -277,6 +277,16 @@ docs/         brand assets and screenshots
 | Light indigo | `#7B7BF0` | Default accent in the UI |
 | Cream | `#F3E9DC` | Mark on dark, app icon foreground |
 
+## HTTPS
+
+The tablet's microphone (AI Talk) only works on an https page. Tailscale Serve gives HarborOS a real certificate on your tailnet name, reachable only from your own devices:
+
+1. In the Tailscale admin console, turn on **MagicDNS** and **HTTPS certificates** (DNS page).
+2. On the server, in the HarborOS folder: `sudo bash host/setup-https.sh`
+3. Open `https://<server>.<tailnet>.ts.net` and pair the tablet again from that address.
+
+The old `http://<tailscale-ip>:7080` keeps working. On the https address, apps that only speak plain http (most self-hosted apps) open in a new tab, because browsers don't show http pages inside https ones. `sudo bash host/setup-https.sh off` undoes it.
+
 ## Wall tablet
 
 1. Settings → Tablets → **Add tablet**, then scan the QR code with the tablet (or open `/wall` on it and type the code).
