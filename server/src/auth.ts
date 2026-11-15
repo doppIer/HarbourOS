@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db, settings } from "./db.js";
 import { env } from "./env.js";
+import { deviceUser } from "./wall.js";
 import { resets, users, validEmail, validPassword, type User } from "./users.js";
 
 const COOKIE = "harbor_session";
@@ -31,11 +32,11 @@ function resolveUser(req: FastifyRequest): { user: User | null; token: string | 
     }
   }
   const raw = req.cookies[COOKIE];
-  if (!raw) return { user: null, token: null };
+  if (!raw) return { user: deviceUser(req), token: null };
   const un = req.unsignCookie(raw);
   if (!un.valid || !un.value) return { user: null, token: null };
   const row: any = db.prepare("SELECT created, user_id FROM sessions WHERE token=?").get(un.value);
-  if (!row || Date.now() - row.created > MAX_AGE * 1000) return { user: null, token: null };
+  if (!row || Date.now() - row.created > MAX_AGE * 1000) return { user: deviceUser(req), token: null };
   const u = users.get(row.user_id);
   return { user: u?.status === "active" ? u : null, token: un.value };
 }
@@ -47,8 +48,13 @@ function startSession(reply: FastifyReply, user: User) {
 }
 
 /** What a member may call. Everything else needs admin. */
-function memberAllowed(method: string, url: string): boolean {
+function memberAllowed(method: string, url: string, role: string): boolean {
   const p = url.split("?")[0];
+  // Wall screen: members and paired tablets.
+  if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather")) return true;
+  if (method === "PUT" && p === "/api/wall/profile") return true;
+  if (role === "device") return (method === "GET" && ["/ws", "/api/apps", "/api/containers", "/api/settings", "/api/widgets"].includes(p))
+    || (method === "POST" && /^\/api\/apps\/[^/]+\/(open|activity)$/.test(p));
   if (method === "GET") {
     return p === "/ws" || p === "/api/apps" || p === "/api/containers" || p === "/api/settings" ||
       p === "/api/widgets" || p === "/api/backgrounds";
@@ -58,7 +64,7 @@ function memberAllowed(method: string, url: string): boolean {
   return false;
 }
 
-const PUBLIC = new Set(["/api/login", "/api/signup", "/api/me", "/api/auth/config", "/api/logout", "/api/password/forgot", "/api/password/reset"]);
+const PUBLIC = new Set(["/api/devices/pair", "/api/login", "/api/signup", "/api/me", "/api/auth/config", "/api/logout", "/api/password/forgot", "/api/password/reset"]);
 
 export async function registerAuth(app: FastifyInstance) {
   // Bootstrap: an admin from HARBOR_PASSWORD on a fresh install (optional).
@@ -154,7 +160,7 @@ export async function registerAuth(app: FastifyInstance) {
     if (!user) return reply.code(401).send({ error: "Sign in first." });
     req.user = user;
     req.sessionToken = token;
-    if (user.role !== "admin" && !url.startsWith("/widgets/") && !url.startsWith("/user-") && !memberAllowed(req.method, url)) {
+    if (user.role !== "admin" && !url.startsWith("/widgets/") && !url.startsWith("/user-") && !memberAllowed(req.method, url, user.role)) {
       return reply.code(403).send({ error: "Only an admin can do that." });
     }
   });

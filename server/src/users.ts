@@ -2,7 +2,7 @@
 import crypto from "node:crypto";
 import { db } from "./db.js";
 
-export type Role = "admin" | "member";
+export type Role = "admin" | "member" | "device"; // device: a paired wall tablet
 export type Status = "active" | "pending";
 export interface User { id: string; email: string; name: string; role: Role; status: Status; created: number }
 

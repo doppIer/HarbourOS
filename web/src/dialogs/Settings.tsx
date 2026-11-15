@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { settings, saveSettings, me, isAdmin, type Settings, type Me } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
+import { WeatherPlace } from "../wall/Wall";
 
 type Bg = { name: string; module: string };
 
@@ -160,6 +161,7 @@ function AdminSettings() {
   return (
     <>
       <Users />
+      <Tablets />
 
       <div class="sec-title">Sign-in screen</div>
       <div class="rows" style={{ padding: 16, display: "grid", gap: 14 }}>
@@ -211,6 +213,56 @@ function AdminSettings() {
         {saved && <span class="muted">{saved}</span>}
         {err && <span class="err-text">{err}</span>}
       </div>
+    </>
+  );
+}
+
+// ---------------- tablets (wall screens) ----------------
+interface Device { id: string; name: string; created: number; lastSeen: number | null }
+function Tablets() {
+  const [list, setList] = useState<Device[]>([]);
+  const [name, setName] = useState("");
+  const [pair, setPair] = useState<{ code: string; url: string | null; qr: string | null; expires: number } | null>(null);
+  const load = () => api<Device[]>("/api/devices").then(setList).catch(() => {});
+  useEffect(() => { load(); }, []);
+  // Refresh while a code is showing, so the new tablet appears once it pairs.
+  useEffect(() => { if (!pair) return; const t = setInterval(load, 3000); return () => clearInterval(t); }, [pair]);
+  const make = async () => setPair(await api("/api/devices/pair-code", { method: "POST", json: { name: name || "Wall tablet", origin: location.origin } }));
+  const ago = (t: number | null) => { if (!t) return "never"; const m = Math.round((Date.now() - t) / 60000); return m < 2 ? "online" : m < 60 ? `${m} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
+  return (
+    <>
+      <div class="sec-title">Tablets</div>
+      <div class="rows">
+        <div class="row muted" style={{ fontSize: 13 }}>
+          <Icon name="solar:tablet-linear" />
+          <span class="grow">A tablet on the wall shows <a href="/wall" target="_blank" class="mono">/wall</a>: big touch tiles, night dimming and burn-in protection. Paired tablets can only see the wall and open apps.</span>
+        </div>
+        {list.map((d) => (
+          <div key={d.id} class="row">
+            <Icon name="solar:tablet-linear" />
+            <span class="grow">{d.name}</span>
+            <span class="dim" style={{ fontSize: 12.5 }}>{ago(d.lastSeen)}</span>
+            <button class="btn danger" onClick={() => api(`/api/devices/${d.id}`, { method: "DELETE" }).then(load)}>Remove</button>
+          </div>
+        ))}
+        {!pair ? (
+          <div class="row" style={{ gap: 8 }}>
+            <input class="input" style={{ maxWidth: 240 }} placeholder="Kitchen tablet" value={name} onInput={(e) => setName(e.currentTarget.value)} />
+            <button class="btn primary" onClick={make}><Icon name="solar:qr-code-linear" size={15} />Add tablet</button>
+          </div>
+        ) : (
+          <div class="row" style={{ alignItems: "flex-start", gap: 18, padding: 16, flexWrap: "wrap" }}>
+            {pair.qr && <div style={{ width: 168, height: 168, background: "#fff", padding: 6 }} dangerouslySetInnerHTML={{ __html: pair.qr }} />}
+            <div style={{ display: "grid", gap: 8, flex: 1, minWidth: 220 }}>
+              <div>Scan with the tablet's camera, or open <span class="mono">{location.origin}/wall</span> on it and type:</div>
+              <div class="mono" style={{ fontSize: 30, letterSpacing: "0.2em" }}>{pair.code}</div>
+              <div class="dim" style={{ fontSize: 12.5 }}>Works once, for 10 minutes.</div>
+              <button class="btn" style={{ justifySelf: "start" }} onClick={() => { setPair(null); setName(""); }}>Done</button>
+            </div>
+          </div>
+        )}
+      </div>
+      <div class="rows" style={{ padding: 16, marginTop: 10 }}><WeatherPlace /></div>
     </>
   );
 }

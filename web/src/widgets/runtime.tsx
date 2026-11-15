@@ -7,13 +7,19 @@ import { api, live } from "../lib/ws";
 import { ui } from "./ui";
 
 export type Size = "s" | "m" | "l" | "w" | "tall";
-export interface LayoutItem { widget: string; size: Size }
+export interface LayoutItem { widget: string; size: Size; opts?: Record<string, string> }
 
 export interface WidgetCtx {
   size: Size;
   ui: typeof ui;
   /** Start/stop/restart helpers and navigation. */
   actions: { container(name: string, op: "start" | "stop" | "restart"): Promise<unknown>; open(view: string): void };
+  /** Per-tile options set on the wall (e.g. which app a launcher opens). */
+  opts: Record<string, string>;
+  /** GET a HarborOS API as JSON, e.g. ctx.api("/api/weather"). */
+  api<T = any>(path: string): Promise<T>;
+  /** "wall" on the tablet screen, "desk" on the dashboard. */
+  mode: "wall" | "desk";
 }
 export interface WidgetData { stats: typeof stats.value; containers: typeof containers.value; apps: typeof apps.value; history: typeof history }
 export interface WidgetDef {
@@ -35,7 +41,7 @@ async function load(name: string): Promise<WidgetDef> {
   return m.default as WidgetDef;
 }
 
-export function Tile({ item, editing }: { item: LayoutItem; editing: boolean }) {
+export function Tile({ item, editing, mode = "desk", open = navigate }: { item: LayoutItem; editing: boolean; mode?: "wall" | "desk"; open?: (view: string) => void }) {
   const host = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
@@ -53,8 +59,8 @@ export function Tile({ item, editing }: { item: LayoutItem; editing: boolean }) 
       if (dead) return;
       try {
         inst = def.mount(el, {
-          size: item.size, ui,
-          actions: { container: (n, op) => api(`/api/containers/${encodeURIComponent(n)}/${op}`, { method: "POST" }), open: navigate },
+          size: item.size, ui, opts: item.opts ?? {}, mode, api: (p: string) => api(p),
+          actions: { container: (n, op) => api(`/api/containers/${encodeURIComponent(n)}/${op}`, { method: "POST" }), open },
         });
         // Re-run update only when data signals change; never re-render the dashboard.
         dispose = effect(() => {
@@ -65,7 +71,7 @@ export function Tile({ item, editing }: { item: LayoutItem; editing: boolean }) 
       } catch (e) { setErr(String((e as Error).stack ?? e)); }
     }).catch((e) => setErr(`Couldn't load widgets/${item.widget}.js\n${e.message}`));
     return () => { dead = true; dispose?.(); try { inst?.destroy?.(); } catch {} };
-  }, [item.widget, item.size, rev]);
+  }, [item.widget, item.size, JSON.stringify(item.opts ?? {}), rev]);
 
   return (
     <div class={`tile ${item.size} ${editing ? "edit" : ""}`}>

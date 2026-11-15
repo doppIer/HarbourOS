@@ -319,3 +319,37 @@ table.ct tr:hover .acts { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
+
+/* ---------- wall (tablet) ---------- */
+.wall { position: fixed; inset: 0; background: var(--bg); overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.wall-inner { position: absolute; inset: 0; overflow: auto; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); transition: transform 1.5s ease; }
+.wall-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(220px, 27vh); gap: 12px; grid-auto-flow: dense; }
+.wall-cell { position: relative; min-width: 0; display: grid; }
+.wall-cell > .tile { padding: 18px 20px; }
+.wall-cell.s { grid-column: span 1; }
+.wall-cell.m { grid-column: span 2; }
+.wall-cell.l { grid-column: span 2; grid-row: span 2; }
+.wall-cell.w { grid-column: span 4; }
+.wall-cell.tall { grid-row: span 2; }
+.wall-cell.editing > .tile { pointer-events: none; outline: 1px dashed var(--line-2); opacity: .55; }
+.wall-cell .tile .src { display: none; }
+.wall-edit { position: absolute; inset: auto 8px 8px 8px; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; z-index: 4; }
+.wall-edit .iconbtn, .wall-edit .btn { height: 44px; min-width: 44px; background: #1b1c1f; border: 1px solid var(--line-2); }
+.wall-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; padding: 12px 14px; background: var(--raise); border: 1px solid var(--line); }
+.wall-btn { height: 44px; padding: 0 16px; font-size: 15px; gap: 8px; }
+.wall-msg { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; color: var(--t2); padding: 24px; }
+.wall-app { position: fixed; inset: 0; z-index: 30; background: var(--bg); }
+.wall-close { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: rgba(15,16,17,.85); color: #fff; border: 1px solid var(--line-2); z-index: 2; }
+.wall-dim { position: fixed; inset: 0; background: #000; z-index: 50; transition: opacity 2s; }
+.wall-saver { position: fixed; inset: 0; background: #000; z-index: 51; }
+.wall-sheet { width: min(620px, 100%); }
+.wall-sheet .check { font-size: 15px; min-height: 36px; }
+.wall-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.wall-group { display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.wall-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--t2); font-size: 14px; }
+.wall-row input[type=range] { flex: 1; min-width: 140px; }
+@media (orientation: portrait), (max-width: 760px) {
+  .wall-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wall-cell.w, .wall-cell.l, .wall-cell.m { grid-column: span 2; }
+}
+.wall-row .input { width: auto; }

@@ -11,7 +11,7 @@ export interface Settings {
   allowSignup: boolean; loginBackground: { module: string; dim: number; blur: number };
 }
 
-export interface Me { id: string; email: string; name: string; role: "admin" | "member"; status: string; created: number }
+export interface Me { id: string; email: string; name: string; role: "admin" | "member" | "device"; status: string; created: number }
 export const me = signal<Me | null>(null);
 export const isAdmin = computed(() => me.value?.role === "admin");
 

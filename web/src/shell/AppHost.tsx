@@ -67,9 +67,7 @@ function Frame({ app }: { app: App }) {
   }, [app.id, app.url, app.stripFrameHeaders]);
   const blocked = check && (!check.embeddable || !check.reachable);
   // Apps behind HarborOS's frame proxy: same address, the app's proxy port.
-  const src = app.stripFrameHeaders && app.framePort
-    ? (() => { const u = new URL(app.url); return `http://${location.hostname}:${app.framePort}${u.pathname}${u.search}`; })()
-    : app.url;
+  const src = appSrc(app);
   return (
     <>
       {!blocked && <iframe ref={ref} class="frame" src={src} title={app.name} allow="fullscreen; clipboard-read; clipboard-write; autoplay" />}
@@ -123,4 +121,11 @@ function BootScreen({ app }: { app: App }) {
       </div>
     </div>
   );
+}
+
+/** Where the iframe points: the app itself, or HarborOS's frame proxy for apps that forbid iframes. */
+export function appSrc(app: App) {
+  if (!(app.stripFrameHeaders && app.framePort)) return app.url;
+  const u = new URL(app.url);
+  return `http://${location.hostname}:${app.framePort}${u.pathname}${u.search}`;
 }

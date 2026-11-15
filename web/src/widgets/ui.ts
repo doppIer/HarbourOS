@@ -1,3 +1,5 @@
+import solar from "virtual:solar";
+import { ensureIcon, loadFullSolar } from "../icons/Icon";
 // Helpers handed to every widget as `ctx.ui`. All charts draw on canvas in a
 // single shared requestAnimationFrame loop that only runs when something
 // changed and the tab is visible.
@@ -195,5 +197,22 @@ export function legend(parent: HTMLElement, items: { label: string; color: strin
   return el;
 }
 
-export const ui = { h, bigNumber, sparkline, area, bar, legend, fmt, theme };
+// ---------- icons ----------
+// Solar icons by name, e.g. ui.icon("sun-2-linear", 32). Bundled for widgets:
+// solar:sun-2-linear solar:cloud-sun-2-linear solar:cloud-linear solar:cloud-rain-linear
+// solar:cloud-snowfall-linear solar:cloud-bolt-linear solar:fog-linear solar:moon-linear
+// solar:cloudy-moon-linear solar:wind-linear solar:waterdrops-linear solar:sunrise-linear
+// solar:sunset-linear solar:cpu-bolt-linear solar:temperature-linear solar:bolt-linear
+// Any other Solar icon loads on demand.
+export function icon(name: string, size = 20): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", String(size)); svg.setAttribute("height", String(size)); svg.setAttribute("viewBox", "0 0 24 24");
+  const n = name.replace(/^solar:/, "");
+  const body = (solar as Record<string, string>)[n];
+  if (body) svg.innerHTML = body;
+  else ensureIcon("solar:" + n).then(() => loadFullSolar()).then((all) => { svg.innerHTML = all[n] ?? ""; });
+  return svg;
+}
+
+export const ui = { h, bigNumber, sparkline, area, bar, legend, fmt, theme, icon };
 export type UI = typeof ui;

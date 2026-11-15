@@ -41,6 +41,7 @@
 | **Terminal** | xterm.js tabs backed by tmux on the host, so sessions survive closing the browser. iPhone gets an extra key row. |
 | **Find on server** | Add app → Find on server lists containers with a published port that aren't in the sidebar yet, with names and icons from the store catalog. Tick and add. |
 | **Frame proxy** | Apps that forbid iframes (Nextcloud, Proxmox, …) get an "Open in new tab" card, or "Show it here anyway": HarborOS serves the app on its own port (7081-7090) and drops only `X-Frame-Options` and CSP `frame-ancestors`. |
+| **Wall (tablet)** | `/wall`: a full-screen touch home screen for a tablet that stays on. Clock, weather (Open-Meteo, no key), server vitals and app launcher tiles; long press to edit. Night dimming, wake on touch, burn-in shift, screensaver and keep-awake are set per tablet. Pair a tablet from Settings → Tablets with a QR code; it can only see the wall and open apps. |
 | **Claude** | Claude Code running on the server in tmux. The first open installs it and shows its sign-in, so a claude.ai Pro/Max account is enough. Closing the browser doesn't stop it. |
 | **Accounts** | Admin and member roles, sign-up with admin approval, scrypt-hashed passwords, and a forgot-password flow that works without email. Members see the dashboard and open apps; only admins get the terminal, Claude and controls. |
 | **Light on the box it watches** | One Node process (~40 MB idle), one WebSocket per tab, stats collected once and fanned out, slowing to every 30 s when nobody's looking. ~29 KB gzipped main bundle; terminal and Claude load on demand. |
@@ -275,3 +276,10 @@ docs/         brand assets and screenshots
 | Indigo | `#3F3DB8` | Mark, app icon background |
 | Light indigo | `#7B7BF0` | Default accent in the UI |
 | Cream | `#F3E9DC` | Mark on dark, app icon foreground |
+
+## Wall tablet
+
+1. Settings → Tablets → **Add tablet**, then scan the QR code with the tablet (or open `/wall` on it and type the code).
+2. On the tablet, long press any tile to edit: add tiles, resize, reorder, and open **Screen** for dimming, burn-in protection and the screensaver.
+3. Keeping the screen on needs HarborOS over https. With Tailscale: `sudo tailscale serve --bg 7080`, then use `https://<machine>.<tailnet>.ts.net/wall`. On Android, a kiosk browser (e.g. Fully Kiosk) can keep the screen on instead.
+
