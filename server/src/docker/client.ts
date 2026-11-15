@@ -24,6 +24,8 @@ export const docker = {
   async start(id: string) { await api(`/containers/${encodeURIComponent(id)}/start`, { method: "POST" }); },
   async stop(id: string) { await api(`/containers/${encodeURIComponent(id)}/stop?t=15`, { method: "POST" }); },
   async restart(id: string) { await api(`/containers/${encodeURIComponent(id)}/restart?t=15`, { method: "POST" }); },
+  /** Delete a container (stopping it first). Named volumes and images stay. */
+  async remove(id: string) { await api(`/containers/${encodeURIComponent(id)}?force=1&v=0`, { method: "DELETE" }); },
 
   /** Stream demultiplexed log lines until `signal` aborts. */
   async logs(id: string, onLine: (l: string) => void, signal: AbortSignal, tail = 200, follow = true) {

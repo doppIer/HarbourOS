@@ -113,8 +113,16 @@ function AttentionRow({ c }: { c: ContainerInfo }) {
       <span class="muted grow">{describe(c)}{c.stack ? ` · ${c.stack}` : ""}</span>
       {isAdmin.value && <button class="btn" onClick={() => (dialog.value = { kind: "logs", container: c.name })}>Logs</button>}
       {!isAdmin.value ? null : idle ? <button class="btn" onClick={() => op("stop")}>Stop</button> : <button class="btn" onClick={() => op("restart")}>Restart</button>}
+      {isAdmin.value && c.stack !== "harboros" && <button class="btn danger" onClick={() => confirmRemove([c.name]) && op("remove")}>Remove</button>}
     </div>
   );
+}
+
+/** Removing deletes the container; its named volumes (data) and image stay. */
+function confirmRemove(names: string[]) {
+  return confirm(`Remove ${names.length > 1 ? `${names.length} containers` : names[0]}?\n\n${names.length > 1 ? names.join("\n") + "\n\n" : ""}` +
+    "The container is deleted (stopped first if running). Its volumes and image are kept, so data isn't lost.\n" +
+    "If it belongs to a compose stack, `docker compose up` will create it again.");
 }
 
 function ContainerTable({ list }: { list: ContainerInfo[] }) {
@@ -136,8 +144,9 @@ function ContainerTable({ list }: { list: ContainerInfo[] }) {
   const pickedRunning = picked.filter((n) => list.find((c) => c.name === n)?.state === "running");
   const pickedStopped = picked.filter((n) => list.find((c) => c.name === n)?.state !== "running");
 
-  const bulk = async (o: "stop" | "start" | "restart", targets: string[]) => {
+  const bulk = async (o: "stop" | "start" | "restart" | "remove", targets: string[]) => {
     if (!targets.length) return;
+    if (o === "remove" && !confirmRemove(targets)) return;
     if (o === "stop" && !confirm(`Stop ${targets.length} container${targets.length > 1 ? "s" : ""}?\n\n${targets.join("\n")}`)) return;
     setBusy(o); setMsg("");
     try {
@@ -156,6 +165,7 @@ function ContainerTable({ list }: { list: ContainerInfo[] }) {
           {pickedRunning.length > 0 && <button class="btn danger" disabled={!!busy} onClick={() => bulk("stop", pickedRunning)}><Icon name="solar:stop-circle-linear" size={15} />{busy === "stop" ? "Stopping…" : `Stop ${pickedRunning.length}`}</button>}
           {pickedRunning.length > 0 && <button class="btn" disabled={!!busy} onClick={() => bulk("restart", pickedRunning)}><Icon name="solar:restart-linear" size={15} />{busy === "restart" ? "Restarting…" : "Restart"}</button>}
           {pickedStopped.length > 0 && <button class="btn" disabled={!!busy} onClick={() => bulk("start", pickedStopped)}><Icon name="solar:play-circle-linear" size={15} />{busy === "start" ? "Starting…" : `Start ${pickedStopped.length}`}</button>}
+          <button class="btn danger" disabled={!!busy} onClick={() => bulk("remove", picked)}><Icon name="solar:trash-bin-trash-linear" size={15} />{busy === "remove" ? "Removing…" : `Remove ${picked.length}`}</button>
           <button class="btn" style={{ marginLeft: "auto" }} onClick={() => setSel(new Set())}>Clear</button>
         </div>
       )}
@@ -186,6 +196,7 @@ function ContainerTable({ list }: { list: ContainerInfo[] }) {
                     ? <><button class="iconbtn" aria-label={`Restart ${c.name}`} title="Restart" onClick={() => op(c.name, "restart")}><Icon name="solar:restart-linear" size={15} /></button>
                         {!self(c) && <button class="iconbtn" aria-label={`Stop ${c.name}`} title="Stop" onClick={() => confirm(`Stop ${c.name}?`) && op(c.name, "stop")}><Icon name="solar:stop-circle-linear" size={15} /></button>}</>
                     : <button class="iconbtn" aria-label={`Start ${c.name}`} title="Start" onClick={() => op(c.name, "start")}><Icon name="solar:play-circle-linear" size={15} /></button>}
+                  {!self(c) && <button class="iconbtn" aria-label={`Remove ${c.name}`} title="Remove" onClick={() => confirmRemove([c.name]) && op(c.name, "remove")}><Icon name="solar:trash-bin-trash-linear" size={15} /></button>}
                   <button class="iconbtn" aria-label={`Logs of ${c.name}`} title="Logs" onClick={() => (dialog.value = { kind: "logs", container: c.name })}><Icon name="solar:document-text-linear" size={15} /></button>
                 </>}</td>
               </tr>
