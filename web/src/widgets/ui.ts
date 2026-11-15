@@ -66,7 +66,12 @@ export function bigNumber(parent: HTMLElement, o: { label?: string; unit?: strin
 
 // ---------- canvas base ----------
 function canvas(parent: HTMLElement, height: number | "fill") {
-  const c = h("canvas", { style: { width: "100%", height: height === "fill" ? "100%" : `${height}px`, display: "block" } }) as HTMLCanvasElement;
+  // "fill" is absolutely positioned: with height:100% alone, a parent without a
+  // fixed height falls back to the canvas's own aspect ratio, so the canvas grew
+  // taller with the window and the chart was cut off on wide screens.
+  const c = h("canvas", { style: height === "fill"
+    ? { position: "absolute", inset: "0", width: "100%", height: "100%", display: "block" }
+    : { width: "100%", height: `${height}px`, display: "block" } }) as HTMLCanvasElement;
   parent.append(c);
   const ctx = c.getContext("2d")!;
   const size = () => {
@@ -119,7 +124,7 @@ export function sparkline(parent: HTMLElement, o: { color?: string; height?: num
 // ---------- layered area chart with crosshair + trend card ----------
 export interface Series { label: string; color: string; data: number[]; format?: (v: number) => string }
 export function area(parent: HTMLElement, o: { max?: number; points?: number; trend?: (i: number, series: Series[]) => { title: string; value: string; lines: string[] } } = {}) {
-  parent.style.position = "relative";
+  if (getComputedStyle(parent).position === "static") parent.style.position = "relative";
   const { ctx, size, c } = canvas(parent, "fill");
   const tip = h("div", { style: { position: "absolute", top: "40px", width: "190px", background: "#f4f4f4", color: "#161616", borderRadius: "0", padding: "12px 14px", display: "none", pointerEvents: "none", boxShadow: "0 12px 32px rgba(0,0,0,.45)", zIndex: 2 } });
   parent.append(tip);
