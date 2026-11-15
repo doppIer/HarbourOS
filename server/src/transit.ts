@@ -284,9 +284,14 @@ async function calendar(raw: string, days: number) {
   if (u.protocol !== "https:" || !CAL_HOSTS.test(u.hostname)) throw bad("That link isn't from a calendar service HarborOS knows (iCloud, Google, Outlook, Fastmail, Proton).");
   let c = icsCache.get(u.href);
   if (!c || Date.now() - c.at > 10 * 60_000) {
-    const r = await fetch(u, { signal: AbortSignal.timeout(15000), redirect: "follow" });
+    const r = await fetch(u, { signal: AbortSignal.timeout(15000), redirect: "follow", headers: { Accept: "text/calendar, */*", "User-Agent": "HarborOS calendar" } });
     if (!r.ok) throw bad(`The calendar link answered ${r.status}. Is it still shared?`, 502);
-    c = { at: Date.now(), text: (await r.text()).slice(0, 10 * 1024 * 1024) };
+    // iCloud sends the file gzipped without saying so (no Content-Encoding).
+    let body = Buffer.from(await r.arrayBuffer());
+    if (body[0] === 0x1f && body[1] === 0x8b) body = zlib.gunzipSync(body);
+    const text = body.toString("utf8");
+    if (!text.includes("BEGIN:VCALENDAR")) throw bad("That link didn't return a calendar. Is it still shared as a public calendar?", 502);
+    c = { at: Date.now(), text: text.slice(0, 10 * 1024 * 1024) };
     icsCache.set(u.href, c);
   }
   return expand(c.text, days);
@@ -346,7 +351,7 @@ export function expand(text: string, days: number): Ev[] {
     const until = r.UNTIL ? parseDate(r.UNTIL, "").t : Infinity;
     const count = r.COUNT ? Number(r.COUNT) : Infinity;
     const step = Math.max(1, Number(r.INTERVAL) || 1);
-    const byday = r.BYDAY ? r.BYDAY.split(",").map((d: string) => ["SU", "MO", "TU", "WE", "TH", "FR", "SA"].indexOf(d.slice(-2))) : null;
+    const byday = r.BYDAY && r.FREQ === "WEEKLY" ? r.BYDAY.split(",").map((d: string) => ["SU", "MO", "TU", "WE", "TH", "FR", "SA"].indexOf(d.slice(-2))) : null;
     const start = new Date(s.t);
     let n = 0;
     for (let i = 0; i < 2000 && n < count; i++) {
@@ -358,10 +363,24 @@ export function expand(text: string, days: number): Ev[] {
       else if (r.FREQ === "YEARLY") p.setFullYear(p.getFullYear() + i * step);
       else break;
       let occ = [p.getTime()];
+      // "4TH" = the 4th Thursday of the month, "-1MO" = the last Monday (monthly / yearly rules).
+      const nth = r.BYDAY?.match(/^([+-]?\d+)(SU|MO|TU|WE|TH|FR|SA)$/);
+      if ((r.FREQ === "MONTHLY" || r.FREQ === "YEARLY") && nth) {
+        const m = new Date(p); if (r.FREQ === "YEARLY" && r.BYMONTH) m.setMonth(Number(r.BYMONTH) - 1);
+        const wd = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"].indexOf(nth[2]), k = Number(nth[1]);
+        const x = new Date(m.getFullYear(), m.getMonth(), 1, start.getHours(), start.getMinutes());
+        if (k > 0) { x.setDate(1 + ((wd - x.getDay() + 7) % 7) + (k - 1) * 7); }
+        else { x.setMonth(x.getMonth() + 1, 0); x.setDate(x.getDate() - ((x.getDay() - wd + 7) % 7) + (k + 1) * 7); }
+        occ = x.getMonth() === m.getMonth() ? [x.getTime()] : [];
+      } else if (r.FREQ === "MONTHLY" && r.BYMONTHDAY) {
+        const x = new Date(p); x.setDate(Number(r.BYMONTHDAY));
+        occ = [x.getTime()];
+      }
       if (r.FREQ === "WEEKLY" && byday) {
         const sun = new Date(p); sun.setDate(p.getDate() - p.getDay());
         occ = byday.map((d: number) => { const x = new Date(sun); x.setDate(sun.getDate() + d); return x.getTime(); }).filter((t: number) => t >= s.t).sort();
       }
+      occ = occ.filter((t) => t >= s.t);
       let stop = false;
       for (const t of occ) {
         if (t > until || n >= count) { stop = true; break; }
