@@ -25,12 +25,20 @@ export interface AssistantSettings {
   routerModel: string;
   session: string;
   wakeWord: string;
+  voice: VoiceSettings;
+}
+// "local" = Piper for Turkish, Kokoro for English (Kokoro has no Turkish).
+export interface VoiceSettings {
+  engine: "local" | "piper" | "kokoro" | "elevenlabs" | "browser";
+  piperTr: string; piperEn: string; kokoro: string;
+  elevenVoice: string; elevenModel: string; elevenKey?: string;
 }
 export interface MusicSettings { navidromeUrl: string; navidromeUser: string; navidromePass?: string }
 
 export const ASSISTANT_DEFAULTS: AssistantSettings = {
   brain: "rules", router: "rules", ollamaUrl: "http://host.docker.internal:11434",
   ollamaModel: "llama3.2:3b", routerModel: "qwen2.5:1.5b", session: "", wakeWord: "hey harbor",
+  voice: { engine: "local", piperTr: "tr_TR-dfki-medium", piperEn: "en_US-ryan-high", kokoro: "af_heart", elevenVoice: "", elevenModel: "eleven_multilingual_v2" },
 };
 
 const bad = (msg: string, code = 400) => Object.assign(new Error(msg), { statusCode: code });
@@ -211,7 +219,38 @@ async function act(intent: Intent, via: Reply["via"], ctx: Ctx, app: FastifyInst
 }
 
 export function assistant(): AssistantSettings {
-  return { ...ASSISTANT_DEFAULTS, ...((settings.get() as any).assistant ?? {}) };
+  const a = (settings.get() as any).assistant ?? {};
+  return { ...ASSISTANT_DEFAULTS, ...a, voice: { ...ASSISTANT_DEFAULTS.voice, ...(a.voice ?? {}) } };
+}
+
+// ---------------- voice (text to speech) ----------------
+const PIPER = process.env.PIPER_URL ?? "http://127.0.0.1:5000";
+const KOKORO = process.env.KOKORO_URL ?? "http://127.0.0.1:8880";
+
+async function tts(engine: string, text: string, tr: boolean, v: VoiceSettings): Promise<{ type: string; body: Buffer }> {
+  const get = async (r: Response, name: string) => {
+    if (!r.ok) throw bad(`${name} answered ${r.status}.`, 502);
+    return { type: r.headers.get("content-type")?.startsWith("audio") ? r.headers.get("content-type")! : name === "Piper" ? "audio/wav" : "audio/mpeg", body: Buffer.from(await r.arrayBuffer()) };
+  };
+  const post = (url: string, body: unknown, headers: Record<string, string> = {}) =>
+    fetch(url, { method: "POST", signal: AbortSignal.timeout(30000), headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+  if (engine === "piper")
+    return get(await post(`${PIPER}/synthesize`, { text, voice: tr ? v.piperTr : v.piperEn }).catch(() => { throw bad("Piper isn't running.", 502); }), "Piper");
+  if (engine === "kokoro")
+    return get(await post(`${KOKORO}/v1/audio/speech`, { model: "kokoro", input: text, voice: v.kokoro, response_format: "mp3" }).catch(() => { throw bad("Kokoro isn't running.", 502); }), "Kokoro");
+  if (engine === "elevenlabs") {
+    if (!v.elevenKey || !v.elevenVoice) throw bad("Add your ElevenLabs key and voice in Settings.");
+    return get(await post(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(v.elevenVoice)}?output_format=mp3_44100_128`,
+      { text, model_id: v.elevenModel || "eleven_multilingual_v2" }, { "xi-api-key": v.elevenKey }).catch(() => { throw bad("ElevenLabs isn't reachable.", 502); }), "ElevenLabs");
+  }
+  throw bad("This voice plays in the browser.");
+}
+
+/** Which engine speaks this sentence, and what to try if it's down. */
+function engines(v: VoiceSettings, tr: boolean): string[] {
+  if (v.engine === "local") return tr ? ["piper"] : ["kokoro", "piper"];
+  if (v.engine === "kokoro" && tr) return ["piper"]; // Kokoro can't speak Turkish
+  return [v.engine];
 }
 
 export async function registerAssistant(app: FastifyInstance) {
@@ -226,6 +265,30 @@ export async function registerAssistant(app: FastifyInstance) {
       if (intent) via = "router";
     }
     return act(intent ?? { kind: "chat", text: said }, via, ctx, app, cookie, req.user?.role);
+  });
+
+  // Spoken answers. The tablet falls back to its own voice if this fails.
+  app.post("/api/assistant/speak", async (req, reply) => {
+    const { text = "", lang = "" } = (req.body ?? {}) as { text?: string; lang?: string };
+    const said = String(text).slice(0, 600).trim();
+    if (!said) throw bad("Nothing to say.");
+    const v = assistant().voice, tr = /^tr/i.test(lang);
+    if (v.engine === "browser") throw bad("This voice plays in the browser.");
+    let last: unknown;
+    for (const e of engines(v, tr)) {
+      try { const a = await tts(e, said, tr, v); return reply.header("content-type", a.type).header("x-voice", e).send(a.body); }
+      catch (err) { last = err; }
+    }
+    throw last;
+  });
+
+  app.get("/api/assistant/voices", async () => {
+    const j = async (u: string) => { try { const r = await fetch(u, { signal: AbortSignal.timeout(3000) }); return r.ok ? await r.json() : null; } catch { return null; } };
+    const [p, k] = await Promise.all([j(`${PIPER}/voices`), j(`${KOKORO}/v1/audio/voices`)]);
+    return {
+      piper: p ? Object.keys(p) : null,
+      kokoro: k ? (k.voices ?? []).map((x: any) => (typeof x === "string" ? x : x.id ?? x.name)) : null,
+    };
   });
 
   // The settings screen asks which sessions and models exist.

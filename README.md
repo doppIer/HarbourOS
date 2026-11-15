@@ -284,6 +284,14 @@ docs/         brand assets and screenshots
 3. Keeping the screen on needs HarborOS over https. With Tailscale: `sudo tailscale serve --bg 7080`, then use `https://<machine>.<tailnet>.ts.net/wall`. On Android, a kiosk browser (e.g. Fully Kiosk) can keep the screen on instead.
 
 
+## Voice
+
+The wall's AI Talk speaks through one of these (Settings → Assistant → Voice):
+
+- **Piper + Kokoro** (default): two small containers in `docker-compose.yml`, all on your server. Piper speaks Turkish (and many other languages), Kokoro speaks very natural English. Kokoro's image is about 2 GB; remove the `kokoro` service if you don't want it and English falls back to Piper.
+- **ElevenLabs**: paste your API key and a voice ID. The key stays on the server.
+- **Tablet's own voice**: no server needed. On an iPad, download an "Enhanced" voice under Settings → Accessibility → Spoken Content → Voices for a much better sound.
+
 ## Credits
 
 ASCII animal backgrounds: [ascii-animals](https://github.com/DesignerStephen1/ascii-animals) by DesignerStephen1 (MIT).

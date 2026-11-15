@@ -336,6 +336,8 @@ function AssistantSettings({ f, set }: { f: Settings; set: (p: Partial<Settings>
         <label class="field">Wake word<input class="input" value={a.wakeWord} onChange={(e) => setA({ wakeWord: e.currentTarget.value.toLowerCase() })} /></label>
       </div>
 
+      <VoiceSettings f={f} a={a} setA={setA} />
+
       <div class="sec-title">Music</div>
       <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
         <div class="muted" style={{ fontSize: 13 }}>DJ mode and "play some music" use your Navidrome library and play on the tablet.</div>
@@ -345,6 +347,74 @@ function AssistantSettings({ f, set }: { f: Settings; set: (p: Partial<Settings>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button class="btn" type="button" onClick={() => { setTest("Save first, then test."); api("/api/music/test").then(() => setTest("Connected.")).catch((e) => setTest((e as Error).message)); }}>Test connection</button>
           <span class="dim" style={{ fontSize: 13 }}>{test}</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const V_DEF = { engine: "local", piperTr: "tr_TR-dfki-medium", piperEn: "en_US-ryan-high", kokoro: "af_heart", elevenVoice: "", elevenModel: "eleven_multilingual_v2" } as const;
+const ENGINES = [
+  ["local", "Piper + Kokoro", "On this server, free. Turkish with Piper, English with Kokoro."],
+  ["piper", "Piper", "On this server, free and very fast. Every language it has a voice for."],
+  ["kokoro", "Kokoro", "On this server, free. The most natural local English (Turkish falls back to Piper)."],
+  ["elevenlabs", "ElevenLabs", "Cloud, sounds human, Turkish too. Needs your API key; billed per character."],
+  ["browser", "Tablet's own voice", "No server needed. Quality depends on the device."],
+] as const;
+
+function VoiceSettings({ f, a, setA }: { f: Settings; a: NonNullable<Settings["assistant"]>; setA: (p: any) => void }) {
+  const v = { ...V_DEF, ...(a.voice ?? {}) } as NonNullable<NonNullable<Settings["assistant"]>["voice"]>;
+  const setV = (p: Partial<typeof v>) => setA({ voice: { ...v, ...p } });
+  const [list, setList] = useState<{ piper: string[] | null; kokoro: string[] | null } | null>(null);
+  const [msg, setMsg] = useState("");
+  useEffect(() => { api<any>("/api/assistant/voices").then(setList).catch(() => setList({ piper: null, kokoro: null })); }, []);
+  const pick = (value: string, opts: string[] | null | undefined, on: (x: string) => void, filter?: (x: string) => boolean) => opts?.length
+    ? <select class="input" value={value} onChange={(e) => on(e.currentTarget.value)}>{[...new Set([value, ...opts.filter(filter ?? (() => true))])].map((x) => <option value={x}>{x}</option>)}</select>
+    : <input class="input mono" value={value} onChange={(e) => on(e.currentTarget.value.trim())} />;
+  const test = async (lang: string) => {
+    setMsg("Saving and asking the server…");
+    try {
+      await saveSettings({ ...f, assistant: { ...a, voice: v } } as any);
+      const text = lang === "tr" ? "Merhaba, ben Harbor. Otobüsün yedi dakika sonra kalkıyor." : "Hi, I'm Harbor. Your bus leaves in seven minutes.";
+      if (v.engine === "browser") { const u = new SpeechSynthesisUtterance(text); u.lang = lang === "tr" ? "tr-TR" : "en-US"; speechSynthesis.speak(u); setMsg(""); return; }
+      const r = await fetch("/api/assistant/speak", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, lang }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `Failed (${r.status})`);
+      setMsg(`Playing (${r.headers.get("x-voice")})`);
+      const el = new Audio(URL.createObjectURL(await r.blob())); el.onended = () => setMsg(""); await el.play();
+    } catch (e) { setMsg((e as Error).message); }
+  };
+  const down = (name: string) => <span class="dim" style={{ fontSize: 12 }}>{name} isn't running. Start it with docker compose up -d.</span>;
+
+  return (
+    <>
+      <div class="sec-title">Voice</div>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
+        <div class="brain-grid">
+          {ENGINES.map(([id, name, note]) => (
+            <button type="button" class={`brain ${v.engine === id ? "on" : ""}`} onClick={() => setV({ engine: id })}>
+              <b>{name}</b><span>{note}</span>
+            </button>
+          ))}
+        </div>
+        {(v.engine === "local" || v.engine === "piper" || v.engine === "kokoro") && <>
+          <label class="field">Piper · Turkish voice{pick(v.piperTr, list?.piper, (x) => setV({ piperTr: x }), (x) => x.startsWith("tr"))}{list && !list.piper && down("Piper")}</label>
+          {v.engine === "piper" && <label class="field">Piper · English voice{pick(v.piperEn, list?.piper, (x) => setV({ piperEn: x }), (x) => x.startsWith("en"))}</label>}
+          {v.engine !== "piper" && <label class="field">Kokoro · English voice{pick(v.kokoro, list?.kokoro, (x) => setV({ kokoro: x }))}{list && !list.kokoro && down("Kokoro")}</label>}
+        </>}
+        {v.engine === "elevenlabs" && <>
+          <label class="field">API key<input class="input" type="password" placeholder={f.hasElevenKey ? "Saved. Type to replace it." : "From elevenlabs.io → Profile → API keys"} onChange={(e) => setV({ elevenKey: e.currentTarget.value.trim() })} /></label>
+          <label class="field">Voice ID<input class="input mono" placeholder="e.g. from the Voice Library → ID" value={v.elevenVoice} onChange={(e) => setV({ elevenVoice: e.currentTarget.value.trim() })} /></label>
+          <label class="field">Model
+            <select class="input" value={v.elevenModel} onChange={(e) => setV({ elevenModel: e.currentTarget.value })}>
+              <option value="eleven_multilingual_v2">Multilingual v2 (best quality)</option>
+              <option value="eleven_flash_v2_5">Flash v2.5 (fastest, cheaper)</option>
+            </select>
+          </label>
+        </>}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button class="btn" type="button" onClick={() => test("tr")}>Test in Turkish</button>
+          <button class="btn" type="button" onClick={() => test("en")}>Test in English</button>
+          <span class="dim" style={{ fontSize: 13 }}>{msg}</span>
         </div>
       </div>
     </>

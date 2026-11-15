@@ -85,9 +85,10 @@ export const settings = {
   },
   /** Settings safe for the browser (no HA token). */
   public(): Omit<Settings, "haToken"> & { hasHaToken: boolean; hasMusicPass: boolean } {
-    const { haToken, music, ...rest } = settings.get();
+    const { haToken, music, assistant, ...rest } = settings.get();
+    const { elevenKey, ...voice } = (assistant?.voice ?? {}) as any;
     const { navidromePass, ...m } = music ?? { navidromeUrl: "", navidromeUser: "" };
-    return { ...rest, music: m, hasHaToken: !!haToken, hasMusicPass: !!navidromePass };
+    return { ...rest, ...(assistant ? { assistant: { ...assistant, voice } } : {}), music: m, hasHaToken: !!haToken, hasMusicPass: !!navidromePass, hasElevenKey: !!elevenKey } as any;
   },
 };
 

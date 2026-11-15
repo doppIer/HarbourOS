@@ -4,6 +4,7 @@
 // The browser only allows the microphone on https:// pages (or localhost).
 import { signal } from "@preact/signals";
 import { api } from "../lib/ws";
+import { settings } from "../store";
 import * as player from "./player";
 
 export type Phase = "idle" | "wake" | "listening" | "thinking" | "answer";
@@ -92,13 +93,41 @@ export function resumeWake() { if (wakeOn.value && !rec) start("wake"); }
 export function setLang(l: string) { lang.value = l; store("harbor-lang", l); if (rec) start(mode ?? "wake"); }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) resumeWake(); });
 
-function speak(text: string) {
-  if (!text || !("speechSynthesis" in window)) return Promise.resolve();
+/** Speak with the voice picked in Settings (Piper / Kokoro / ElevenLabs on the server), or the browser's own. */
+async function speak(text: string) {
+  if (!text) return;
+  const engine = settings.value?.assistant?.voice?.engine ?? "local";
+  player.duck(true);
+  try {
+    if (engine !== "browser") {
+      try { return await playServer(text); } catch { /* fall back to the browser voice */ }
+    }
+    return await speakBrowser(text);
+  } finally { player.duck(false); }
+}
+
+let voiceEl: HTMLAudioElement | null = null;
+async function playServer(text: string) {
+  const r = await fetch("/api/assistant/speak", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, lang: lang.value }) });
+  if (!r.ok) throw new Error(String(r.status));
+  const url = URL.createObjectURL(await r.blob());
+  voiceEl ??= new Audio();
+  voiceEl.src = url;
+  try {
+    await voiceEl.play();
+    await new Promise<void>((done) => { voiceEl!.onended = voiceEl!.onerror = () => done(); setTimeout(done, 30000); });
+  } finally { URL.revokeObjectURL(url); }
+}
+
+function speakBrowser(text: string) {
+  if (!("speechSynthesis" in window)) return Promise.resolve();
   return new Promise<void>((done) => {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang.value;
-    const v = speechSynthesis.getVoices().find((x) => x.lang.replace("_", "-").startsWith(lang.value.slice(0, 2)));
+    // Prefer the device's better voices (iPad: Settings → Accessibility → Spoken Content → Voices → "Enhanced").
+    const rank = (x: SpeechSynthesisVoice) => (/premium/i.test(x.name) ? 3 : /enhanced|neural|natural|siri/i.test(x.name) ? 2 : x.localService ? 1 : 0);
+    const v = speechSynthesis.getVoices().filter((x) => x.lang.replace("_", "-").startsWith(lang.value.slice(0, 2))).sort((a, b) => rank(b) - rank(a))[0];
     if (v) u.voice = v;
     u.onend = u.onerror = () => done();
     speechSynthesis.speak(u);

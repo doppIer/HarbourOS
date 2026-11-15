@@ -59,6 +59,13 @@ export function volume(d: number) {
   const a = el(); a.volume = Math.min(1, Math.max(0, a.volume + d));
   safe(() => localStorage.setItem("harbor-volume", String(a.volume)));
 }
+// Turn the music down while the assistant talks.
+let ducked: number | null = null;
+export function duck(on: boolean) {
+  if (!audio) return;
+  if (on && ducked === null) { ducked = audio.volume; audio.volume = Math.min(audio.volume, 0.2); }
+  if (!on && ducked !== null) { audio.volume = ducked; ducked = null; }
+}
 export function stop() { audio?.pause(); queue.value = []; index.value = 0; }
 
 /** The bar along the bottom of the wall while something is queued. */
