@@ -121,7 +121,8 @@ export async function registerRoutes(app: FastifyInstance) {
     else if (op === "restart") await docker.restart(c.Id);
     else if (op === "remove") await docker.remove(c.Id);
     else throw Object.assign(new Error("Unknown op"), { statusCode: 400 });
-    await refresh(); publishApps();
+    const touched = op === "remove" ? appsUsing([c.Id]) : [];
+    await refresh(); dropEmptyApps(touched); publishApps();
     return { ok: true };
   });
 
@@ -129,6 +130,7 @@ export async function registerRoutes(app: FastifyInstance) {
     const { names, op } = req.body as { names?: string[]; op?: string };
     if (!Array.isArray(names) || !names.length || names.length > 200 || !["start", "stop", "restart", "remove"].includes(String(op))) throw Object.assign(new Error("Pick containers and an action."), { statusCode: 400 });
     const results: { name: string; ok: boolean; error?: string }[] = [];
+    const touched = op === "remove" ? appsUsing(names.map((n) => findByName(n)?.Id).filter(Boolean) as string[]) : [];
     // A few at a time: fast, without hammering an old CPU.
     const queue = [...names];
     await Promise.all(Array.from({ length: 4 }, async () => {
@@ -140,7 +142,7 @@ export async function registerRoutes(app: FastifyInstance) {
         catch (e) { results.push({ name: n, ok: false, error: (e as Error).message }); }
       }
     }));
-    await refresh(); publishApps();
+    await refresh(); dropEmptyApps(touched); publishApps();
     return { results };
   });
 
@@ -336,6 +338,15 @@ function demoFound(host: string): Found[] {
 }
 
 /** HarborOS's own containers (this app and its Docker proxy). */
+/** Apps in the sidebar that run on any of these containers. */
+function appsUsing(ids: string[]) {
+  return apps.all().filter((a) => appContainers(a).some((c) => ids.includes(c.Id))).map((a) => a.id);
+}
+/** After removing containers, drop sidebar apps that have no container left. */
+function dropEmptyApps(ids: string[]) {
+  for (const id of ids) { const a = apps.get(id); if (a && appContainers(a).length === 0) apps.del(id); }
+}
+
 function isHarbor(c: { Labels?: Record<string, string>; Image?: string }) {
   return c.Labels?.["com.docker.compose.project"] === "harboros" || /docker-socket-proxy|^harboros/.test(c.Image ?? "");
 }
