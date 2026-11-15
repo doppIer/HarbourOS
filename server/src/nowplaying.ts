@@ -9,6 +9,7 @@ import { env } from "./env.js";
 import { hub } from "./hub.js";
 import { demo } from "./demo.js";
 import type { NowPlaying } from "./protocol.js";
+import { hostExec } from "./host.js";
 
 
 let now: NowPlaying | null = null;
@@ -61,12 +62,31 @@ export async function registerNowPlaying(app: FastifyInstance) {
       n.state = b.state;
     }
     if (n.state === "stopped") { coverBytes = source === "airplay" ? null : coverBytes; }
+    // AirPlay can be controlled through shairport-sync (it asks the phone); Spotify Connect can't yet.
+    n.controls = n.source === "airplay";
     now = n;
     publish();
     return { ok: true };
   });
 
   app.get("/api/nowplaying", async () => now);
+
+  // Play/pause, next, previous. AirPlay: shairport-sync's remote control on the
+  // host's system D-Bus, which passes the command back to the phone.
+  const METHODS: Record<string, string> = { playpause: "PlayPause", next: "Next", previous: "Previous" };
+  app.post("/api/nowplaying/control", async (req, reply) => {
+    const action = String((req.body as any)?.action ?? "");
+    const m = METHODS[action];
+    if (!m) return reply.code(400).send({ error: "Unknown action." });
+    if (!now?.controls) return reply.code(409).send({ error: "This source can't be controlled from here." });
+    if (demo) {
+      if (action === "playpause") { now = { ...now, state: now.state === "playing" ? "paused" : "playing", at: Date.now() }; publish(); }
+      return { ok: true };
+    }
+    const r = await hostExec(`busctl --system call org.gnome.ShairportSync /org/gnome/ShairportSync org.gnome.ShairportSync.RemoteControl ${m}`);
+    if (r.code !== 0) return reply.code(502).send({ error: r.err.trim().split("\n").pop() || "The speaker didn't take the command." });
+    return { ok: true };
+  });
   app.get("/api/nowplaying/cover", async (_req, reply) => {
     if (!coverBytes) return reply.code(404).send({ error: "No cover." });
     reply.header("content-type", coverBytes.type).header("cache-control", "max-age=86400");
@@ -76,7 +96,7 @@ export async function registerNowPlaying(app: FastifyInstance) {
   // Demo mode: something to look at on the wall.
   if (demo) app.post("/api/nowplaying/demo", async (req) => {
     const on = (req.body as any)?.on !== false;
-    now = on ? { source: (req.body as any)?.source === "airplay" ? "airplay" : "spotify", state: "playing", title: "Midnight City", artist: "M83", album: "Hurry Up, We're Dreaming", cover: null, duration: 243000, position: 30000, at: Date.now(), device: "Han's iPhone" }
+    now = on ? { source: (req.body as any)?.source === "airplay" ? "airplay" : "spotify", state: "playing", title: "Midnight City", artist: "M83", album: "Hurry Up, We're Dreaming", cover: null, duration: 243000, position: 30000, at: Date.now(), device: "Han's iPhone", controls: (req.body as any)?.source === "airplay" }
       : now && { ...now, state: "stopped" };
     publish();
     return now;

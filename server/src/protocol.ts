@@ -107,4 +107,5 @@ export interface NowPlaying {
   position: number;          // ms at `at`
   at: number;                // when `position` was true (epoch ms)
   device?: string;           // who is sending, when known
+  controls?: boolean;        // play/pause/next/previous work for this source
 }

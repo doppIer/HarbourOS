@@ -9,7 +9,7 @@ import { Icon } from "../icons/Icon";
 export interface NowPlaying {
   source: "airplay" | "spotify"; state: "playing" | "paused" | "stopped";
   title: string; artist: string; album: string; cover: string | null;
-  duration: number; position: number; at: number; device?: string;
+  duration: number; position: number; at: number; device?: string; controls?: boolean;
 }
 
 export const np = signal<NowPlaying | null>(null);
@@ -81,10 +81,31 @@ export function Stage({ open, onClose }: { open: boolean; onClose: () => void })
               <div class="stage-nums mono"><span>{fmt(pos)}</span><span>-{fmt(n.duration - pos)}</span></div>
             </div>
           )}
-          {n.state === "playing" && <div class="stage-eq" aria-hidden="true"><i /><i /><i /><i /><i /></div>}
+          {n.controls ? <Controls n={n} /> : n.state === "playing" && <div class="stage-eq" aria-hidden="true"><i /><i /><i /><i /><i /></div>}
         </div>
       </div>
       <div class="stage-hint">Tap to close</div>
+    </div>
+  );
+}
+
+function Controls({ n }: { n: NowPlaying }) {
+  const [err, setErr] = useState("");
+  const send = (action: string) => (e: Event) => {
+    e.stopPropagation();
+    setErr("");
+    // Show the new state right away; the phone confirms a moment later.
+    if (action === "playpause") np.value = { ...n, state: n.state === "playing" ? "paused" : "playing", position: n.position + (n.state === "playing" ? Date.now() - n.at : 0), at: Date.now() };
+    api("/api/nowplaying/control", { method: "POST", json: { action } }).catch((x) => { setErr((x as Error).message); np.value = n; });
+  };
+  return (
+    <div class="stage-ctrl" onClick={(e) => e.stopPropagation()}>
+      <button aria-label="Previous" onClick={send("previous")}><Icon name="solar:skip-previous-bold" size={34} /></button>
+      <button class="play" aria-label={n.state === "playing" ? "Pause" : "Play"} onClick={send("playpause")}>
+        <Icon name={n.state === "playing" ? "solar:pause-bold" : "solar:play-bold"} size={44} />
+      </button>
+      <button aria-label="Next" onClick={send("next")}><Icon name="solar:skip-next-bold" size={34} /></button>
+      {err && <span class="stage-err">{err}</span>}
     </div>
   );
 }

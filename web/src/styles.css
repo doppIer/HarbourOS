@@ -548,3 +548,10 @@ a.it, a.btn { text-decoration: none; }
   .stage-body { flex-direction: column; text-align: center; gap: var(--s6); }
   .stage-src, .stage-eq { justify-content: center; } .stage-time { margin-inline: auto; width: 100%; }
 }
+.stage-ctrl { display: flex; align-items: center; gap: clamp(20px, 3vw, 36px); margin-top: var(--s5); }
+.stage-ctrl button { display: grid; place-items: center; width: 64px; height: 64px; border: 0; border-radius: 50%; background: none; color: rgba(255,255,255,.85); cursor: pointer; transition: transform .2s cubic-bezier(.2,1.4,.3,1), background .2s, color .2s; }
+.stage-ctrl button:hover { color: #fff; background: rgba(255,255,255,.08); }
+.stage-ctrl button:active { transform: scale(.88); }
+.stage-ctrl button.play { width: 76px; height: 76px; color: #fff; }
+.stage-err { font-size: 13px; color: rgba(255,255,255,.6); }
+@media (max-width: 700px), (orientation: portrait) { .stage-ctrl { justify-content: center; } }
