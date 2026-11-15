@@ -8,17 +8,8 @@ import type { FastifyInstance } from "fastify";
 import { env } from "./env.js";
 import { hub } from "./hub.js";
 import { demo } from "./demo.js";
+import type { NowPlaying } from "./protocol.js";
 
-export interface NowPlaying {
-  source: "airplay" | "spotify";
-  state: "playing" | "paused" | "stopped";
-  title: string; artist: string; album: string;
-  cover: string | null;      // URL the tablet can load
-  duration: number;          // ms, 0 when unknown
-  position: number;          // ms at `at`
-  at: number;                // when `position` was true (epoch ms)
-  device?: string;           // who's sending, when known (e.g. "Han's iPhone")
-}
 
 let now: NowPlaying | null = null;
 let coverBytes: { type: string; body: Buffer } | null = null;

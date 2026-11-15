@@ -95,4 +95,16 @@ export type ServerMsg =
   | { t: "log"; id: string; line: string }
   | { t: "widgets"; changed: string[] }
   | { t: "store"; d: StoreJob }
-  | { t: "nowplaying"; d: import("./nowplaying.js").NowPlaying | null };
+  | { t: "nowplaying"; d: NowPlaying | null };
+
+/** Music on the server's speaker (AirPlay / Spotify Connect), see nowplaying.ts. */
+export interface NowPlaying {
+  source: "airplay" | "spotify";
+  state: "playing" | "paused" | "stopped";
+  title: string; artist: string; album: string;
+  cover: string | null;      // URL the tablet can load
+  duration: number;          // ms, 0 when unknown
+  position: number;          // ms at `at`
+  at: number;                // when `position` was true (epoch ms)
+  device?: string;           // who is sending, when known
+}
