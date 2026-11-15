@@ -80,10 +80,16 @@ export function Sidebar() {
           {isAdmin.value && <Item id="ai" icon="solar:magic-stick-3-linear" label="AI" />}
           {isAdmin.value && <Item id="store" icon="solar:shop-2-linear" label="Store" />}
 
-          {sections.map((s) => (
+          {(sections.length ? sections : ["Apps"]).map((s, i) => (
             <div key={s}>
               <div class={`sec ${closed.includes(s) ? "closed" : ""}`} onClick={() => toggleSection(s)}>
                 {s} <span class="car">▼</span>
+                {i === 0 && isAdmin.value && (
+                  <button class="sec-act" title="Find apps running on the server" aria-label="Find apps running on the server"
+                    onClick={(e) => { e.stopPropagation(); dialog.value = { kind: "discover" }; }}>
+                    <Icon name="solar:refresh-linear" size={13} />
+                  </button>
+                )}
               </div>
               {!closed.includes(s) && pinned.filter((a) => (a.section || "Apps") === s).map((a) => (
                 <div key={a.id} draggable

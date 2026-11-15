@@ -50,7 +50,7 @@ export default function Discover() {
         </header>
         <div class="body">
           <div class="muted" style={{ fontSize: 13 }}>Containers with a published port that aren't in the sidebar yet. Check the name and address before adding.</div>
-          {!list && !err && <div class="dim">Looking at Docker…</div>}
+          {!list && !err && <div class="dim">Scanning containers and their ports, fetching logos…</div>}
           {list?.length === 0 && <div class="dim">Nothing new found. Every app with a published port is already in the sidebar.</div>}
           {list && list.length > 0 && (
             <div class="rows">

@@ -363,3 +363,5 @@ a.it, a.btn { text-decoration: none; }
 .agent:hover { border-color: var(--line-2); background: var(--hover); }
 .agent-logo { width: 48px; height: 48px; flex: none; display: grid; place-items: center; background: #0b0c0d; border: 1px solid var(--line); }
 @media (max-width: 760px) { .agents { grid-template-columns: 1fr; } }
+.sec-act { margin-left: auto; width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 5px; background: none; color: var(--t4); cursor: pointer; opacity: .7; }
+.sec-act:hover { background: var(--hover); color: var(--t1); opacity: 1; }

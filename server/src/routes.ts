@@ -160,7 +160,10 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/user-icons/:file", async (req, reply) => {
     const f = path.join(iconDir, path.basename((req.params as any).file));
     if (!fs.existsSync(f)) return reply.code(404).send();
-    return reply.type(f.endsWith(".svg") ? "image/svg+xml" : "image/" + path.extname(f).slice(1)).send(fs.createReadStream(f));
+    const ext = path.extname(f).slice(1);
+    // Icons can come from other apps' pages: never let an SVG run script on HarborOS's origin.
+    reply.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'").header("Cache-Control", "public, max-age=86400");
+    return reply.type(ext === "svg" ? "image/svg+xml" : ext === "ico" ? "image/x-icon" : ext === "jpg" ? "image/jpeg" : "image/" + ext).send(fs.createReadStream(f));
   });
 
   // ---------- backgrounds (data/backgrounds/<name>/index.js, no rebuild needed) ----------

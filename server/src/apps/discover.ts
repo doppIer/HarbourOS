@@ -4,6 +4,10 @@
 import { docker, type RawContainer } from "../docker/client.js";
 import { catalog } from "../store/catalog.js";
 import type { AppConfig } from "../protocol.js";
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { env } from "../env.js";
 
 export interface Found { key: string; name: string; icon: string; url: string; ports: number[]; containers: string[]; composeProject?: string; running: boolean }
 
@@ -41,7 +45,46 @@ export async function discover(host: string, existing: AppConfig[]): Promise<Fou
       running: cs.some((c) => c.State === "running"),
     });
   }
+  // Apps the catalog doesn't know: use the app's own icon from its web page.
+  await Promise.all(out.filter((f) => f.running && f.icon.startsWith("solar:")).map(async (f) => {
+    const logo = await appLogo(f.url).catch(() => null);
+    if (logo) f.icon = logo;
+  }));
   return out.sort((a, b) => Number(b.running) - Number(a.running) || a.name.localeCompare(b.name));
+}
+
+/** Download the best icon a web app advertises (apple-touch-icon, icon link, /favicon.ico). */
+export async function appLogo(url: string): Promise<string | null> {
+  const get = (u: string) => fetch(u, { redirect: "follow", signal: AbortSignal.timeout(4000) });
+  const page = await get(url);
+  const html = (page.headers.get("content-type") ?? "").includes("html") ? (await page.text()).slice(0, 200_000) : "";
+  const links = [...html.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
+  const attr = (tag: string, k: string) => new RegExp(`\\b${k}\\s*=\\s*["']([^"']+)["']`, "i").exec(tag)?.[1];
+  const score = (tag: string) => {
+    const rel = (attr(tag, "rel") ?? "").toLowerCase(), href = attr(tag, "href") ?? "";
+    if (!rel.includes("icon")) return -1;
+    const size = Number((attr(tag, "sizes") ?? "").split("x")[0]) || (rel.includes("apple") ? 180 : 32);
+    return size + (href.endsWith(".svg") ? 500 : 0) + (rel.includes("mask") ? -1000 : 0);
+  };
+  const best = links.filter((l) => score(l) >= 0).sort((a, b) => score(b) - score(a))[0];
+  const candidates = [best && attr(best, "href"), "/favicon.ico"].filter(Boolean) as string[];
+  for (const c of candidates) {
+    try {
+      const u = new URL(c, page.url);
+      const r = await get(u.href);
+      const type = r.headers.get("content-type") ?? "";
+      const ext = type.includes("svg") ? ".svg" : type.includes("png") ? ".png" : type.includes("webp") ? ".webp" : type.includes("jpeg") ? ".jpg" : type.includes("icon") ? ".ico" : "";
+      if (!r.ok || !ext) continue;
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length < 100 || buf.length > 512 * 1024) continue;
+      const dir = path.join(env.dataDir, "icons");
+      fs.mkdirSync(dir, { recursive: true });
+      const file = "found-" + crypto.createHash("sha1").update(buf).digest("hex").slice(0, 12) + ext;
+      fs.writeFileSync(path.join(dir, file), buf);
+      return `/user-icons/${file}`;
+    } catch {}
+  }
+  return null;
 }
 
 /** Can the browser show `url` inside an iframe on HarborOS's origin? */
