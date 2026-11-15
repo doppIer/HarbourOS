@@ -55,6 +55,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/apps/:id/probe", async (req) => {
     const a = apps.get((req.params as any).id);
     if (!a) throw Object.assign(new Error("No such app."), { statusCode: 404 });
+    if (a.stripFrameHeaders) return { reachable: true, embeddable: true };
     if (demo) return { reachable: true, embeddable: !/nextcloud/i.test(a.name), reason: /nextcloud/i.test(a.name) ? "This app doesn't allow other pages to show it." : undefined };
     return probe(a.url, String((req.query as any).origin ?? ""));
   });

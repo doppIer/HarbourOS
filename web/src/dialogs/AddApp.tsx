@@ -5,7 +5,7 @@ import { Icon, ensureIcon, loadFullSolar } from "../icons/Icon";
 
 const blank = {
   name: "", icon: "solar:widget-linear", url: "", containers: [] as string[], composeProject: "", healthUrl: "",
-  startOnDemand: true, idleStopMinutes: 0, alwaysOn: false, startOnBoot: false, section: "Apps", pinned: true, openMode: "embed" as "embed" | "tab",
+  startOnDemand: true, idleStopMinutes: 0, alwaysOn: false, startOnBoot: false, section: "Apps", pinned: true, openMode: "embed" as "embed" | "tab", stripFrameHeaders: false,
 };
 
 export default function AddApp({ app }: { app?: App }) {
@@ -89,6 +89,7 @@ export default function AddApp({ app }: { app?: App }) {
           <label class="field">Service URL<input class="input" value={f.url} placeholder="http://100.64.0.7:4533" onInput={(e) => set({ url: e.currentTarget.value })} /></label>
 
           <label class="check"><input type="checkbox" checked={f.openMode === "tab"} onChange={(e) => set({ openMode: e.currentTarget.checked ? "tab" : "embed" })} />Open in a new tab (for apps that can't be shown inside HarborOS)</label>
+          <label class="check"><input type="checkbox" checked={!!f.stripFrameHeaders} disabled={f.openMode === "tab"} onChange={(e) => set({ stripFrameHeaders: e.currentTarget.checked })} />Show inside HarborOS even if the app forbids it (frame proxy)</label>
           <label class="check"><input type="checkbox" checked={linkOnly} onChange={(e) => setLinkOnly(e.currentTarget.checked)} />Link only (no container)</label>
 
           {!linkOnly && (

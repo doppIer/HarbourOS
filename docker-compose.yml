@@ -46,6 +46,8 @@ services:
     # Bind to the Tailscale IP only (set TAILSCALE_IP in .env) — never 0.0.0.0.
     ports:
       - ${TAILSCALE_IP:-127.0.0.1}:7080:7080
+      # frame proxy for apps that refuse iframes (Nextcloud, …), one port per app
+      - ${TAILSCALE_IP:-127.0.0.1}:7081-7090:7081-7090
     networks: [internal, default]
     mem_limit: 160m
     cpus: 0.5

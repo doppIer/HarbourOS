@@ -13,12 +13,14 @@ import { startContainerWatch } from "./docker/containers.js";
 import { publishApps, startIdleWatcher, startOnBoot } from "./lifecycle/apps.js";
 import { seedWidgets, watchWidgets } from "./widgets/store.js";
 import { ensureSshKey } from "./host.js";
+import { syncFrameProxies } from "./apps/frameproxy.js";
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "warn" }, trustProxy: true, bodyLimit: 4 * 1024 * 1024 });
 
 await app.register(cookie, { secret: env.sessionSecret });
 await app.register(websocket, { options: { maxPayload: 1024 * 1024 } });
 ensureSshKey();
+syncFrameProxies();
 await registerAuth(app);
 await registerRoutes(app);
 

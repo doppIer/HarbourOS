@@ -1,3 +1,4 @@
+import { syncFrameProxies } from "../apps/frameproxy.js";
 // App lifecycle: status, on-demand boot with health check, idle auto-stop.
 import { apps } from "../db.js";
 import { hub } from "../hub.js";
@@ -20,6 +21,7 @@ export function appStatus(app: AppConfig): AppStatus {
 }
 
 export function publishApps() {
+  syncFrameProxies();
   hub.publish("apps", { t: "apps", d: apps.all().map((a) => ({ ...a, status: appStatus(a) })) });
 }
 

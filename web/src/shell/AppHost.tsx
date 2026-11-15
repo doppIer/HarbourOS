@@ -64,11 +64,15 @@ function Frame({ app }: { app: App }) {
   useEffect(() => {
     setCheck(null);
     api<typeof check>(`/api/apps/${app.id}/probe?origin=${encodeURIComponent(location.origin)}`).then(setCheck).catch(() => {});
-  }, [app.id, app.url]);
+  }, [app.id, app.url, app.stripFrameHeaders]);
   const blocked = check && (!check.embeddable || !check.reachable);
+  // Apps behind HarborOS's frame proxy: same address, the app's proxy port.
+  const src = app.stripFrameHeaders && app.framePort
+    ? (() => { const u = new URL(app.url); return `http://${location.hostname}:${app.framePort}${u.pathname}${u.search}`; })()
+    : app.url;
   return (
     <>
-      {!blocked && <iframe ref={ref} class="frame" src={app.url} title={app.name} allow="fullscreen; clipboard-read; clipboard-write; autoplay" />}
+      {!blocked && <iframe ref={ref} class="frame" src={src} title={app.name} allow="fullscreen; clipboard-read; clipboard-write; autoplay" />}
       {blocked && (
         <div class="boot">
           <div class="boot-card">
@@ -80,8 +84,10 @@ function Frame({ app }: { app: App }) {
               </div>
             </div>
             <div class="mono dim" style={{ fontSize: 12, margin: "14px 0" }}>{app.url}</div>
+            {!check!.embeddable && <div class="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>"Show it here anyway" passes the app through HarborOS on its own port and removes only that rule. The app may ask you to add the new address to its trusted domains.</div>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button class="btn primary" onClick={() => window.open(app.url, "_blank", "noopener")}><Icon name="solar:square-top-down-linear" size={15} />Open in new tab</button>
+              {!check!.embeddable && isAdmin.value && <button class="btn" onClick={() => api(`/api/apps/${app.id}`, { method: "PUT", json: { stripFrameHeaders: true, openMode: "embed" } })}>Show it here anyway</button>}
               {!check!.embeddable && isAdmin.value && <button class="btn" onClick={() => api(`/api/apps/${app.id}`, { method: "PUT", json: { openMode: "tab" } })}>Always open in a new tab</button>}
               {check!.embeddable && <button class="btn" onClick={() => setCheck({ reachable: true, embeddable: true })}>Try here anyway</button>}
             </div>
