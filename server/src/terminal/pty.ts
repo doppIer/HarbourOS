@@ -4,13 +4,14 @@ import { spawn as ptySpawn } from "node-pty";
 import { execFile } from "node:child_process";
 import type { WebSocket } from "ws";
 import { env } from "../env.js";
+import { SSH_HINT } from "../host.js";
 
 const clean = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32) || "main";
 const PREFIX = "harbor-";
 
 function command(tmuxArgs: string[]): [string, string[]] {
   if (env.terminalMode === "ssh") {
-    return ["ssh", ["-tt", "-i", env.sshKey, "-o", "StrictHostKeyChecking=accept-new", "-o", "ServerAliveInterval=30",
+    return ["ssh", ["-tt", "-i", env.sshKey, "-o", "StrictHostKeyChecking=accept-new", "-o", "ServerAliveInterval=30", "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no", "-o", "LogLevel=ERROR",
       "-o", `UserKnownHostsFile=${env.dataDir}/ssh/known_hosts`, env.sshTarget, "--", "tmux", ...tmuxArgs]];
   }
   return ["tmux", tmuxArgs];
@@ -23,8 +24,11 @@ export function attach(ws: WebSocket, name: string, program?: string) {
   const [cmd, argv] = command(args);
   const pty = ptySpawn(cmd, argv, { name: "xterm-256color", cols: 100, rows: 30, env: { ...process.env, TERM: "xterm-256color" } as any });
 
-  pty.onData((d) => { if (ws.readyState === 1) ws.send(d); });
-  pty.onExit(() => { if (ws.readyState === 1) ws.close(1000, "session ended"); });
+  let out = "";
+  pty.onData((d) => { if (out.length < 2000) out += d; if (ws.readyState === 1) ws.send(d); });
+  pty.onExit(() => {
+    if (env.terminalMode === "ssh" && /permission denied|not accessible|connection refused/i.test(out) && ws.readyState === 1) ws.send(`\r\n\x1b[33m${SSH_HINT}\x1b[0m\r\n`);
+    if (ws.readyState === 1) ws.close(1000, "session ended"); });
   ws.on("message", (raw, isBinary) => {
     const s = isBinary ? Buffer.from(raw as Buffer).toString("utf8") : String(raw);
     // control frames: "\u0000{json}"

@@ -7,7 +7,7 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import type { Readable } from "node:stream";
 import { env } from "../env.js";
-import { hostExec, hostSpawn, q } from "../host.js";
+import { hostExec, hostSpawn, isAuthError, q, SSH_HINT } from "../host.js";
 
 export interface Entry { name: string; type: "dir" | "file" | "link" | "other"; target?: "dir" | "file" | "other"; size: number; mtime: number; mode: string; owner: string }
 export interface Stat { type: "dir" | "file" | "other"; size: number; mtime: number }
@@ -32,6 +32,7 @@ const root = path.resolve(env.filesRoot);
 const local = (p: string) => path.join(root, p);
 
 function sshError(err: string, p: string): Error {
+  if (isAuthError(err)) return httpError(503, SSH_HINT);
   if (/permission denied/i.test(err)) return httpError(403, `Permission denied for ${p}. HarborOS works as the terminal user on the host.`);
   if (/no such file|cannot stat|cannot access/i.test(err)) return httpError(404, `${p} doesn't exist.`);
   if (/exists/i.test(err)) return httpError(409, "Something with that name already exists.");
@@ -59,6 +60,7 @@ export const hostfs = {
   async home(): Promise<string> {
     if (!ssh) return process.env.FILES_HOME ?? "/";
     const r = await hostExec('printf %s "$HOME"');
+    if (r.code !== 0 && isAuthError(r.err)) throw httpError(503, SSH_HINT);
     return r.code === 0 && r.out.length ? r.out.toString() : "/";
   },
 

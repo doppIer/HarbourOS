@@ -128,10 +128,16 @@ export function area(parent: HTMLElement, o: { max?: number; points?: number; tr
     const { w, h: H } = size();
     ctx.clearRect(0, 0, w, H);
     if (!series.length) return;
-    const n = Math.min(o.points ?? 48, Math.max(...series.map((s) => s.data.length)));
+    const slots = o.points ?? 48;
+    const n = Math.min(slots, Math.max(...series.map((s) => s.data.length)));
     if (n < 2) return;
-    const ds = series.map((s) => downsample(s.data, n));
+    // Bad samples (NaN, null) would break the whole curve, so carry the last good value.
+    const ds = series.map((s) => { let last = 0; return downsample(s.data, n).map((v) => (Number.isFinite(v) ? (last = v) : last)); });
     const max = o.max ?? Math.max(1, ...ds.flat()) * 1.25;
+    // Right after a restart there are only a few samples: keep the time scale and
+    // grow the curve in from the right instead of stretching it across the tile.
+    const x0 = n < slots ? (1 - (n - 1) / (slots - 1)) * w : 0;
+    const X = (i: number) => x0 + (i / (n - 1)) * (w - x0);
     const top = 50;
     // Draw the largest series first so smaller ones stay visible on top.
     const mean = (d: number[]) => d.reduce((a, b) => a + b, 0) / (d.length || 1);
@@ -139,20 +145,20 @@ export function area(parent: HTMLElement, o: { max?: number; points?: number; tr
     order.forEach((si) => {
       const d = ds[si];
       const col = series[si].color;
-      const pts = d.map((v, i) => [(i / (d.length - 1)) * w, H - (v / max) * (H - top)] as [number, number]);
+      const pts = d.map((v, i) => [X(i), H - (Math.min(v, max) / max) * (H - top)] as [number, number]);
       const g = ctx.createLinearGradient(0, top, 0, H);
       g.addColorStop(0, col + "b0"); g.addColorStop(1, theme.blue + "40");
-      ctx.beginPath(); smoothPath(ctx, pts); ctx.lineTo(w, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.beginPath(); smoothPath(ctx, pts); ctx.lineTo(w, H); ctx.lineTo(x0, H); ctx.closePath();
       ctx.globalAlpha = 0.8; ctx.fillStyle = g; ctx.fill(); ctx.globalAlpha = 1;
       ctx.beginPath(); smoothPath(ctx, pts); ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
     });
     if (hover != null) {
-      const x = hover * w;
+      const i = Math.max(0, Math.min(n - 1, Math.round(((hover * w - x0) / (w - x0)) * (n - 1))));
+      const x = X(i);
       ctx.setLineDash([4, 5]); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, 18); ctx.lineTo(x, H - 6); ctx.stroke(); ctx.setLineDash([]);
-      const i = Math.round(hover * (n - 1));
       ds.forEach((d, si) => {
-        const y = H - (d[i] / max) * (H - top);
+        const y = H - (Math.min(d[i], max) / max) * (H - top);
         ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill();
         ctx.lineWidth = 2; ctx.strokeStyle = series[si].color; ctx.stroke();
       });

@@ -6,7 +6,7 @@
 // ~/harbor-stacks/<project>/ on the host.
 import fs from "node:fs";
 import path from "node:path";
-import { hostSpawn, q } from "../host.js";
+import { hostSpawn, isAuthError, q, SSH_HINT } from "../host.js";
 import { parse, stringify } from "yaml";
 import { db, apps } from "../db.js";
 import { env } from "../env.js";
@@ -151,11 +151,12 @@ const ansi = /\x1b\[[0-9;?]*[A-Za-z]|\r/g;
 function hostShell(script: string, onLine: (l: string) => void): Promise<number> {
   return new Promise((resolve) => {
     const p = hostSpawn(script);
-    let buf = "";
-    const feed = (d: Buffer) => { buf += d.toString("utf8"); let i; while ((i = buf.indexOf("\n")) >= 0) { const l = buf.slice(0, i).replace(ansi, "").trimEnd(); buf = buf.slice(i + 1); if (l) onLine(l); } };
+    let buf = "", auth = false;
+    const line = (l: string) => { if (isAuthError(l)) auth = true; onLine(l); };
+    const feed = (d: Buffer) => { buf += d.toString("utf8"); let i; while ((i = buf.indexOf("\n")) >= 0) { const l = buf.slice(0, i).replace(ansi, "").trimEnd(); buf = buf.slice(i + 1); if (l) line(l); } };
     p.stdout.on("data", feed); p.stderr.on("data", feed);
     p.on("error", (e) => { onLine(e.message); resolve(127); });
-    p.on("close", (code) => { if (buf.trim()) onLine(buf.replace(ansi, "").trim()); resolve(code ?? 1); });
+    p.on("close", (code) => { if (buf.trim()) line(buf.replace(ansi, "").trim()); if (code === 255 && auth) onLine(SSH_HINT); resolve(code ?? 1); });
     p.stdin.end();
   });
 }

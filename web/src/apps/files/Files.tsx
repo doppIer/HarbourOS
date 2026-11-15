@@ -118,7 +118,7 @@ export default function Files() {
       { label: isDir(e) ? "Open" : "Open in editor", icon: isDir(e) ? "solar:folder-open-linear" : "solar:pen-linear", run: () => openEntry(e) },
       ...(!isDir(e) ? [{ label: "Download", icon: "solar:file-download-linear", run: () => { location.href = raw(p, true); } }] : []),
       { label: "Rename", icon: "solar:pen-linear", run: () => setRenaming(e.name) },
-      { label: "Copy path", icon: "solar:copy-linear", run: () => navigator.clipboard?.writeText(p) },
+      { label: "Copy path", icon: "solar:copy-linear", run: () => copyText(p) },
       "-" as const,
       { label: "Delete", icon: "solar:trash-bin-minimalistic-linear", danger: true, run: () => remove(e) },
     ];
@@ -298,4 +298,11 @@ function Editor({ file, onClose, onSaved }: { file: Opened; onClose: () => void;
       <footer class="dim mono">{editable ? `${lines} lines · ${fmt.bytes(new Blob([text]).size)} · ⌘S / Ctrl+S to save` : fmt.bytes(file.size).toString()}</footer>
     </section>
   );
+}
+
+/** navigator.clipboard is missing over plain http, so fall back to a hidden textarea. */
+function copyText(t: string) {
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t); return; }
+  const a = document.createElement("textarea"); a.value = t; a.style.position = "fixed"; a.style.opacity = "0";
+  document.body.append(a); a.select(); document.execCommand("copy"); a.remove();
 }

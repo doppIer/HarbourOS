@@ -1,8 +1,24 @@
 // Running shell commands on the host. In Docker that's SSH to the host as the
 // terminal user (TERMINAL_MODE=ssh); in local development it's this machine.
 // SSH reuses one connection (ControlMaster) so short commands stay fast.
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, execFileSync, type ChildProcessWithoutNullStreams } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import { env } from "./env.js";
+
+/** Shown whenever the host refuses our key. */
+export const SSH_HINT = "HarborOS can't sign in to the host over SSH. On the server, in the HarborOS folder, run: sudo bash host/setup-terminal.sh";
+export const isAuthError = (err: string) => /permission denied \((publickey|password)|identity file .* not accessible|host key verification failed|connection refused|could not resolve hostname/i.test(err);
+
+/** Make sure the container has a key pair, so setup-terminal.sh only has to authorise it. */
+export function ensureSshKey() {
+  if (env.terminalMode !== "ssh" || fs.existsSync(env.sshKey)) return;
+  try {
+    fs.mkdirSync(path.dirname(env.sshKey), { recursive: true, mode: 0o700 });
+    execFileSync("ssh-keygen", ["-t", "ed25519", "-N", "", "-C", "harboros", "-f", env.sshKey], { stdio: "ignore" });
+    console.log(`Created ${env.sshKey}. Authorise it on the host: sudo bash host/setup-terminal.sh`);
+  } catch (e) { console.warn("Could not create an SSH key:", (e as Error).message); }
+}
 
 export const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 
@@ -10,7 +26,7 @@ export const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 export function hostSpawn(script: string): ChildProcessWithoutNullStreams {
   if (env.terminalMode === "ssh") {
     return spawn("ssh", [
-      "-i", env.sshKey, "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new",
+      "-i", env.sshKey, "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "LogLevel=ERROR", "-o", "StrictHostKeyChecking=accept-new",
       "-o", `UserKnownHostsFile=${env.dataDir}/ssh/known_hosts`,
       "-o", "ControlMaster=auto", "-o", `ControlPath=${env.dataDir}/ssh/cm-%C`, "-o", "ControlPersist=120",
       env.sshTarget, "--", "bash", "-c", q(script),
