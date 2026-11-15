@@ -7,7 +7,7 @@ import path from "node:path";
 import { env } from "./env.js";
 
 /** Shown whenever the host refuses our key. */
-export const SSH_HINT = "HarborOS can't sign in to the host over SSH. On the server, in the HarborOS folder, run: sudo bash host/setup-terminal.sh";
+export const SSH_HINT = "HarbourOS can't sign in to the host over SSH. On the server, in the HarbourOS folder, run: sudo bash host/setup-terminal.sh";
 export const isAuthError = (err: string) => /permission denied \((publickey|password)|identity file .* not accessible|host key verification failed|connection refused|could not resolve hostname/i.test(err);
 
 /** Make sure the container has a key pair, so setup-terminal.sh only has to authorise it. */

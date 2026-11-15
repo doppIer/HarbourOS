@@ -9,7 +9,7 @@ type Part = { type: "text"; text: string } | { type: "tool"; name: string } | { 
 interface Turn { role: "user" | "assistant"; parts: Part[] }
 interface ChatMeta { id: string; title: string; updated: number }
 
-// crypto.randomUUID only exists on https/localhost; HarborOS is often opened over plain http on a Tailscale IP.
+// crypto.randomUUID only exists on https/localhost; HarbourOS is often opened over plain http on a Tailscale IP.
 const newId = () => crypto.randomUUID?.() ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 
 /** Convert stored API messages into display turns. */

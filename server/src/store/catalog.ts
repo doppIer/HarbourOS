@@ -35,7 +35,7 @@ async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
 }
 
 async function get(url: string, timeout = 15000) {
-  const r = await fetch(url, { signal: AbortSignal.timeout(timeout), headers: { "User-Agent": "HarborOS" } });
+  const r = await fetch(url, { signal: AbortSignal.timeout(timeout), headers: { "User-Agent": "HarbourOS" } });
   if (!r.ok) throw new Error(`${url} → ${r.status}`);
   return r;
 }

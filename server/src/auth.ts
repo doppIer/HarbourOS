@@ -120,7 +120,7 @@ export async function registerAuth(app: FastifyInstance) {
     const u = users.byEmail(email);
     if (u) {
       const { code } = resets.create(u.id);
-      console.log(`\n  ┌──────────────────────────────────────────────\n  │ HarborOS password reset for ${u.email}\n  │ Code: ${code}   (valid 15 minutes, one use)\n  └──────────────────────────────────────────────\n`);
+      console.log(`\n  ┌──────────────────────────────────────────────\n  │ HarbourOS password reset for ${u.email}\n  │ Code: ${code}   (valid 15 minutes, one use)\n  └──────────────────────────────────────────────\n`);
     }
     return { ok: true };
   });

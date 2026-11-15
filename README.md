@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/brand/wordmark-dark.png">
-    <img src="docs/brand/wordmark-light.png" alt="HarborOS" width="420">
+    <img src="docs/brand/wordmark-light.png" alt="HarbourOS" width="420">
   </picture>
 </p>
 
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="HarborOS home dashboard: sidebar with apps and status dots, system load chart, CPU, memory, power, network, disk and savings tiles" width="100%">
+  <img src="docs/screenshots/home.png" alt="HarbourOS home dashboard: sidebar with apps and status dots, system load chart, CPU, memory, power, network, disk and savings tiles" width="100%">
 </p>
 
 <p align="center"><sub>Screenshots use the built-in demo mode (<code>HARBOR_DEMO=1</code>), so the numbers are simulated.</sub></p>
@@ -40,7 +40,7 @@
 | **Widgets you edit as files** | Every tile is a small JS file in `data/widgets/`. Save it and the tile reloads in every open browser, with no build or restart. |
 | **Terminal** | xterm.js tabs backed by tmux on the host, so sessions survive closing the browser. iPhone gets an extra key row. |
 | **Find on server** | Add app → Find on server lists containers with a published port that aren't in the sidebar yet, with names and icons from the store catalog. Tick and add. |
-| **Frame proxy** | Apps that forbid iframes (Nextcloud, Proxmox, …) get an "Open in new tab" card, or "Show it here anyway": HarborOS serves the app on its own port (7081-7090) and drops only `X-Frame-Options` and CSP `frame-ancestors`. |
+| **Frame proxy** | Apps that forbid iframes (Nextcloud, Proxmox, …) get an "Open in new tab" card, or "Show it here anyway": HarbourOS serves the app on its own port (7081-7090) and drops only `X-Frame-Options` and CSP `frame-ancestors`. |
 | **Wall (tablet)** | `/wall`: a full-screen touch home screen for a tablet that stays on. Clock, weather (Open-Meteo, no key), server vitals and app launcher tiles; long press to edit. Night dimming, wake on touch, burn-in shift, screensaver and keep-awake are set per tablet. Pair a tablet from Settings → Tablets with a QR code; it can only see the wall and open apps. |
 | **AI** | Pick an assistant: Claude Code, Gemini CLI, Codex or Hermes Agent, each in its own tmux session on the server. The first open installs it (user-level, no sudo) and shows its own sign-in. Local models run through Ollama (on the host or in its container). |
 | **Accounts** | Admin and member roles, sign-up with admin approval, scrypt-hashed passwords, and a forgot-password flow that works without email. Members see the dashboard and open apps; only admins get the terminal, Claude and controls. |
@@ -76,7 +76,7 @@
 </table>
 
 <p align="center">
-  <img src="docs/screenshots/mobile-home.png" alt="HarborOS dashboard on an iPhone" width="260">
+  <img src="docs/screenshots/mobile-home.png" alt="HarbourOS dashboard on an iPhone" width="260">
   &nbsp;&nbsp;
   <img src="docs/screenshots/mobile-menu.png" alt="Slide-out menu on an iPhone" width="260">
 </p>
@@ -109,7 +109,7 @@ sudo bash host/rapl-permissions.sh   # optional, for the power estimate
 docker compose up -d --build
 ```
 
-Open `http://<TAILSCALE_IP>:7080`. The first visit shows **Set up HarborOS**: the account you create there is the admin.
+Open `http://<TAILSCALE_IP>:7080`. The first visit shows **Set up HarbourOS**: the account you create there is the admin.
 
 `data/harbor.json` is read only on first boot. After that, apps live in SQLite and you manage them from the UI.
 
@@ -122,15 +122,15 @@ To serve it over HTTPS with Tailscale identities:
 tailscale serve --bg 7080
 ```
 
-Then set `TRUST_TAILSCALE_HEADERS=1` and `TAILSCALE_ALLOWED_USERS=you@example.com` in `.env`. Each allowed login must match the email of an active HarborOS account. When header auth is on, keep 7080 bound to `127.0.0.1` so only `tailscale serve` can reach it.
+Then set `TRUST_TAILSCALE_HEADERS=1` and `TAILSCALE_ALLOWED_USERS=you@example.com` in `.env`. Each allowed login must match the email of an active HarbourOS account. When header auth is on, keep 7080 bound to `127.0.0.1` so only `tailscale serve` can reach it.
 
 ## Accounts
 
 - **Admin:** can do everything.
 - **Member:** sees the dashboard and opens apps. Can't use the terminal, Claude, container controls or settings; the server enforces this, not just the UI.
-- **Sign-up:** the sign-in screen has a Sign up link while **Settings → Sign-in screen → Show "Sign up"** is on (the default). New accounts wait as "pending" until an admin approves them under **Settings → Users**, where you can also change roles or delete accounts. HarborOS always keeps at least one admin.
+- **Sign-up:** the sign-in screen has a Sign up link while **Settings → Sign-in screen → Show "Sign up"** is on (the default). New accounts wait as "pending" until an admin approves them under **Settings → Users**, where you can also change roles or delete accounts. HarbourOS always keeps at least one admin.
 - **Passwords:** stored as scrypt hashes. Changing your password signs out your other devices.
-- **Forgot password:** HarborOS doesn't send email. **Forgot password?** on the sign-in screen writes a one-time code to the server log; read it on the server with
+- **Forgot password:** HarbourOS doesn't send email. **Forgot password?** on the sign-in screen writes a one-time code to the server log; read it on the server with
 
   ```bash
   docker compose logs harbor | grep -A2 "password reset"
@@ -156,7 +156,7 @@ Some apps refuse to load inside an iframe because of `X-Frame-Options` or a CSP 
 
 **Files** in the sidebar (admins only) browses the server's filesystem: open folders, edit text files (line numbers, ⌘S / Ctrl+S to save), preview images, upload by dropping files onto the list, download, rename, create and delete. Right-click or long-press a row for its menu.
 
-Every operation runs **on the host as the terminal user** over the same SSH connection as the terminal and store, not inside the container. So Files can only read or change what that user can: by default your home folder, `~/harbor-stacks`, and anything you've given the user access to. Root-owned files under `/etc` are readable but saving them fails with *Permission denied*. HarborOS won't delete top-level folders like `/home` or anything under `/proc`, `/sys`, `/dev` or `/boot`.
+Every operation runs **on the host as the terminal user** over the same SSH connection as the terminal and store, not inside the container. So Files can only read or change what that user can: by default your home folder, `~/harbor-stacks`, and anything you've given the user access to. Root-owned files under `/etc` are readable but saving them fails with *Permission denied*. HarbourOS won't delete top-level folders like `/home` or anything under `/proc`, `/sys`, `/dev` or `/boot`.
 
 Saving is refused if the file changed on disk after you opened it. Text files up to 5 MB open in the editor; uploads are limited to 200 MB each.
 
@@ -164,7 +164,7 @@ Saving is refused if the file changed on disk after you opened it. Text files up
 
 **Store** in the sidebar (admins only) lists the [CasaOS AppStore](https://github.com/IceWhaleTech/CasaOS-AppStore) catalog (Apache-2.0), with pull counts from Docker Hub. The catalog is fetched on first visit (about 20 seconds: only each app's compose file and icon, not the 250 MB repo) and cached in `data/store/`. **Update catalog** fetches it again.
 
-When you install an app, HarborOS rewrites its compose file for your server:
+When you install an app, HarbourOS rewrites its compose file for your server:
 
 - `/DATA/AppData` becomes your app data folder and the rest of `/DATA` becomes your media folder (defaults `/srv/harbor/appdata` and `/srv/harbor/media`, remembered for next time)
 - ports you pick replace the catalog's; ports other containers already use are refused
@@ -221,13 +221,13 @@ export function mount(el, { reducedMotion }) {
 }
 ```
 
-HarborOS calls `pause()` when the tab is hidden or an app is open (both toggles are in Settings) and `resume()` when it's visible again. The background runs in its own isolated layer, with dim and blur controls. A blank template ships as `/backgrounds/template/index.js`.
+HarbourOS calls `pause()` when the tab is hidden or an app is open (both toggles are in Settings) and `resume()` when it's visible again. The background runs in its own isolated layer, with dim and blur controls. A blank template ships as `/backgrounds/template/index.js`.
 
 ## Auto start and stop, Sablier and Traefik
 
 - **Start on demand:** opening an app starts its containers, or its whole compose stack in `depends_on` order.
 - **Idle stop:** an app counts as in use while any client is viewing it or something calls `POST /api/apps/<id>/activity`. Once it has been idle longer than its limit, it's stopped, stacks in reverse dependency order.
-- **Traffic from outside HarborOS:** if you reach a service directly (for example Jellyfin from your TV) through Traefik with the [Sablier](https://github.com/sablierapp/sablier) plugin, let Sablier own those containers: give them `sablier.enable=true` and `sablier.group=<app-id>` labels, and set that app's idle stop to 0 in HarborOS. HarborOS still shows status and can start them. To have HarborOS own idle stop instead, point an access-log hook or a Traefik `forwardAuth` middleware at `POST /api/apps/<id>/activity` with a session cookie.
+- **Traffic from outside HarbourOS:** if you reach a service directly (for example Jellyfin from your TV) through Traefik with the [Sablier](https://github.com/sablierapp/sablier) plugin, let Sablier own those containers: give them `sablier.enable=true` and `sablier.group=<app-id>` labels, and set that app's idle stop to 0 in HarbourOS. HarbourOS still shows status and can start them. To have HarbourOS own idle stop instead, point an access-log hook or a Traefik `forwardAuth` middleware at `POST /api/apps/<id>/activity` with a session cookie.
 
 ## Power numbers
 
@@ -268,7 +268,7 @@ docs/         brand assets and screenshots
 ## Brand
 
 <p align="center">
-  <img src="docs/brand/variants.png" alt="HarborOS ship mark in indigo #3F3DB8, light indigo #7B7BF0, cream #F3E9DC, and as an app icon on indigo" width="100%">
+  <img src="docs/brand/variants.png" alt="HarbourOS ship mark in indigo #3F3DB8, light indigo #7B7BF0, cream #F3E9DC, and as an app icon on indigo" width="100%">
 </p>
 
 | Color | Hex | Use |
@@ -279,10 +279,10 @@ docs/         brand assets and screenshots
 
 ## HTTPS
 
-Browsers only allow some features (microphone, camera, installing as an app) on https pages. Tailscale Serve gives HarborOS a real certificate on your tailnet name, reachable only from your own devices:
+Browsers only allow some features (microphone, camera, installing as an app) on https pages. Tailscale Serve gives HarbourOS a real certificate on your tailnet name, reachable only from your own devices:
 
 1. In the Tailscale admin console, turn on **MagicDNS** and **HTTPS certificates** (DNS page).
-2. On the server, in the HarborOS folder: `sudo bash host/setup-https.sh`
+2. On the server, in the HarbourOS folder: `sudo bash host/setup-https.sh`
 3. Open `https://<server>.<tailnet>.ts.net` and pair the tablet again from that address.
 
 The old `http://<tailscale-ip>:7080` keeps working. On the https address, apps that only speak plain http (most self-hosted apps) open in a new tab, because browsers don't show http pages inside https ones. `sudo bash host/setup-https.sh off` undoes it.
@@ -291,7 +291,7 @@ The old `http://<tailscale-ip>:7080` keeps working. On the https address, apps t
 
 1. Settings → Tablets → **Add tablet**, then scan the QR code with the tablet (or open `/wall` on it and type the code).
 2. On the tablet, long press any tile to edit: add tiles, resize, reorder, and open **Screen** for dimming, burn-in protection and the screensaver.
-3. Keeping the screen on needs HarborOS over https. With Tailscale: `sudo tailscale serve --bg 7080`, then use `https://<machine>.<tailnet>.ts.net/wall`. On Android, a kiosk browser (e.g. Fully Kiosk) can keep the screen on instead.
+3. Keeping the screen on needs HarbourOS over https. With Tailscale: `sudo tailscale serve --bg 7080`, then use `https://<machine>.<tailnet>.ts.net/wall`. On Android, a kiosk browser (e.g. Fully Kiosk) can keep the screen on instead.
 
 
 ## Credits

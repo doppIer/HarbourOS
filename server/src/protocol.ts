@@ -17,7 +17,7 @@ export interface AppConfig {
   pinned: boolean;
   order: number;
   section: string;            // sidebar section, e.g. "Apps"
-  stripFrameHeaders?: boolean; // show apps that forbid iframes through HarborOS's frame proxy
+  stripFrameHeaders?: boolean; // show apps that forbid iframes through HarbourOS's frame proxy
   framePort?: number;           // the proxy port given to this app (set by the server)
   openMode?: "embed" | "tab";   // "tab": the app refuses iframes, open it in a new browser tab
 }

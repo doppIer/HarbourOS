@@ -114,8 +114,8 @@ export async function registerRoutes(app: FastifyInstance) {
     const { name, op } = req.params as { name: string; op: string };
     const found = findByName(name);
     const c = found ?? { Id: name };
-    // Stopping HarborOS (or its Docker proxy) from inside HarborOS would cut you off.
-    if ((op === "stop" || op === "remove") && found && isHarbor(found)) throw Object.assign(new Error("HarborOS won't stop or remove itself. Use docker compose on the server for that."), { statusCode: 400 });
+    // Stopping HarbourOS (or its Docker proxy) from inside HarbourOS would cut you off.
+    if ((op === "stop" || op === "remove") && found && isHarbor(found)) throw Object.assign(new Error("HarbourOS won't stop or remove itself. Use docker compose on the server for that."), { statusCode: 400 });
     if (op === "start") await docker.start(c.Id);
     else if (op === "stop") await docker.stop(c.Id);
     else if (op === "restart") await docker.restart(c.Id);
@@ -137,7 +137,7 @@ export async function registerRoutes(app: FastifyInstance) {
       for (let n = queue.shift(); n; n = queue.shift()) {
         const c = findByName(n);
         if (!c) { results.push({ name: n, ok: false, error: "not found" }); continue; }
-        if ((op === "stop" || op === "remove") && isHarbor(c)) { results.push({ name: n, ok: false, error: "HarborOS itself" }); continue; }
+        if ((op === "stop" || op === "remove") && isHarbor(c)) { results.push({ name: n, ok: false, error: "HarbourOS itself" }); continue; }
         try { await (op === "start" ? docker.start(c.Id) : op === "stop" ? docker.stop(c.Id) : op === "remove" ? docker.remove(c.Id) : docker.restart(c.Id)); results.push({ name: n, ok: true }); }
         catch (e) { results.push({ name: n, ok: false, error: (e as Error).message }); }
       }
@@ -170,7 +170,7 @@ export async function registerRoutes(app: FastifyInstance) {
     const f = path.join(iconDir, path.basename((req.params as any).file));
     if (!fs.existsSync(f)) return reply.code(404).send();
     const ext = path.extname(f).slice(1);
-    // Icons can come from other apps' pages: never let an SVG run script on HarborOS's origin.
+    // Icons can come from other apps' pages: never let an SVG run script on HarbourOS's origin.
     reply.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'").header("Cache-Control", "public, max-age=86400");
     return reply.type(ext === "svg" ? "image/svg+xml" : ext === "ico" ? "image/x-icon" : ext === "jpg" ? "image/jpeg" : "image/" + ext).send(fs.createReadStream(f));
   });
@@ -344,7 +344,7 @@ function demoFound(host: string): Found[] {
   ];
 }
 
-/** HarborOS's own containers (this app and its Docker proxy). */
+/** HarbourOS's own containers (this app and its Docker proxy). */
 /** Apps in the sidebar that run on any of these containers. */
 function appsUsing(ids: string[]) {
   return apps.all().filter((a) => appContainers(a).some((c) => ids.includes(c.Id))).map((a) => a.id);

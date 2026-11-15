@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Run ON THE HOST:  sudo bash host/rapl-permissions.sh
 # Since kernel 5.10 (CVE-2020-8694) RAPL energy counters are root-only. This
-# makes the package counter world-readable at every boot so HarborOS can
+# makes the package counter world-readable at every boot so HarbourOS can
 # estimate power without running as root. (Coarse energy readings only.)
 set -euo pipefail
 cat > /etc/systemd/system/rapl-read.service <<'EOF'
 [Unit]
-Description=Make Intel RAPL energy counter readable for HarborOS
+Description=Make Intel RAPL energy counter readable for HarbourOS
 
 [Service]
 Type=oneshot

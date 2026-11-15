@@ -1,4 +1,4 @@
-// CPU usage tile. Edit freely: this file is loaded live by HarborOS.
+// CPU usage tile. Edit freely: this file is loaded live by HarbourOS.
 // ctx.ui has helpers: bigNumber, sparkline, area, bar, legend, h, fmt, theme.
 export default {
   title: "CPU",

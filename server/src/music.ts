@@ -25,7 +25,7 @@ async function sub(path: string, params: Record<string, string | number> = {}): 
   if (!m.navidromeUrl || !m.navidromeUser || !m.navidromePass) throw bad("Connect Navidrome in Settings → Music first.");
   const salt = crypto.randomBytes(6).toString("hex");
   const u = new URL(`/rest/${path}`, m.navidromeUrl);
-  const qs = { u: m.navidromeUser, t: crypto.createHash("md5").update(m.navidromePass + salt).digest("hex"), s: salt, v: "1.16.1", c: "HarborOS", f: "json", ...params };
+  const qs = { u: m.navidromeUser, t: crypto.createHash("md5").update(m.navidromePass + salt).digest("hex"), s: salt, v: "1.16.1", c: "HarbourOS", f: "json", ...params };
   Object.entries(qs).forEach(([k, v]) => u.searchParams.set(k, String(v)));
   const r = await fetch(u, { signal: AbortSignal.timeout(15000) }).catch(() => { throw bad("Navidrome didn't answer. Is the address right?", 502); });
   const j: any = await r.json().catch(() => null);
@@ -80,7 +80,7 @@ export async function registerMusic(app: FastifyInstance) {
     const m = music();
     const salt = crypto.randomBytes(6).toString("hex");
     const u = new URL(`/rest/${path}`, m.navidromeUrl);
-    const qs: Record<string, string> = { u: m.navidromeUser, t: crypto.createHash("md5").update((m.navidromePass ?? "") + salt).digest("hex"), s: salt, v: "1.16.1", c: "HarborOS", id: String(req.params.id), ...(path === "getCoverArt" ? { size: "400" } : {}) };
+    const qs: Record<string, string> = { u: m.navidromeUser, t: crypto.createHash("md5").update((m.navidromePass ?? "") + salt).digest("hex"), s: salt, v: "1.16.1", c: "HarbourOS", id: String(req.params.id), ...(path === "getCoverArt" ? { size: "400" } : {}) };
     Object.entries(qs).forEach(([k, v]) => u.searchParams.set(k, v));
     const r = await fetch(u, { headers: req.headers.range ? { range: req.headers.range } : {} });
     reply.code(r.status);

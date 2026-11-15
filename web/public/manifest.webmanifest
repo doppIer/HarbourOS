@@ -1,6 +1,6 @@
 {
-  "name": "HarborOS",
-  "short_name": "Harbor",
+  "name": "HarbourOS",
+  "short_name": "Harbour",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#08090A",

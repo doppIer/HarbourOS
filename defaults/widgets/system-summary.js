@@ -1,5 +1,5 @@
 // One card with the server's vitals: CPU, RAM, power and temperature.
-// Edit freely: this file is loaded live by HarborOS.
+// Edit freely: this file is loaded live by HarbourOS.
 export default {
   title: "System",
   sizes: ["m", "w", "s"],

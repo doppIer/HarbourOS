@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Puts HarborOS on https://<this-machine>.<tailnet>.ts.net with a real
+# Puts HarbourOS on https://<this-machine>.<tailnet>.ts.net with a real
 # certificate, using Tailscale Serve. Only devices on your tailnet can reach it.
 #
-#   sudo bash host/setup-https.sh          # HarborOS on port 7080 (default)
+#   sudo bash host/setup-https.sh          # HarbourOS on port 7080 (default)
 #   sudo bash host/setup-https.sh off      # stop serving it over https
 set -euo pipefail
 
@@ -12,7 +12,7 @@ command -v tailscale >/dev/null || { echo "Tailscale isn't installed on this mac
 
 if [ "${1:-}" = "off" ]; then
   tailscale serve --https=443 off || true
-  echo "HarborOS is no longer served over https."
+  echo "HarbourOS is no longer served over https."
   exit 0
 fi
 
@@ -20,9 +20,9 @@ IP="$(tailscale ip -4 | head -n1)"
 DNS="$(tailscale status --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))')"
 [ -n "$DNS" ] || { echo "MagicDNS is off. Turn it on at https://login.tailscale.com/admin/dns and run this again."; exit 1; }
 
-# HarborOS listens on the Tailscale address only (TAILSCALE_IP in .env).
+# HarbourOS listens on the Tailscale address only (TAILSCALE_IP in .env).
 if ! curl -fsS -o /dev/null "http://$IP:$PORT/"; then
-  echo "HarborOS doesn't answer on http://$IP:$PORT. Start it first: docker compose up -d"
+  echo "HarbourOS doesn't answer on http://$IP:$PORT. Start it first: docker compose up -d"
   exit 1
 fi
 

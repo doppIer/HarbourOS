@@ -35,11 +35,11 @@ const STEPS: Record<Mode, Step[]> = {
 };
 
 const COPY: Record<Mode, { title: string; sub: string }> = {
-  forgot: { title: "Reset your password", sub: "HarborOS doesn't send email. It writes a one-time code to the server log instead, or your admin can make one for you in Settings → Users." },
+  forgot: { title: "Reset your password", sub: "HarbourOS doesn't send email. It writes a one-time code to the server log instead, or your admin can make one for you in Settings → Users." },
   reset: { title: "Enter your reset code", sub: "Run “docker compose logs harbor” on the server and look for “password reset”. The code works once, for 15 minutes." },
-  login: { title: "Sign in to HarborOS", sub: "Your home server, one tab away. Sign in with the account your admin gave you." },
+  login: { title: "Sign in to HarbourOS", sub: "Your home server, one tab away. Sign in with the account your admin gave you." },
   signup: { title: "Create your account", sub: "An admin approves new accounts before you can sign in." },
-  setup: { title: "Set up HarborOS", sub: "Create the first account. It becomes the admin for this server." },
+  setup: { title: "Set up HarbourOS", sub: "Create the first account. It becomes the admin for this server." },
 };
 
 export function Login({ onDone }: { onDone: () => void }) {

@@ -183,7 +183,7 @@ function ContainerTable({ list }: { list: ContainerInfo[] }) {
           <tbody class="mono">
             {rows.map((c) => (
               <tr key={c.id} class={sel.has(c.name) ? "on" : ""}>
-                {isAdmin.value && <td>{self(c) ? <span title="HarborOS itself" class="dim">–</span> : <input type="checkbox" aria-label={`Select ${c.name}`} checked={sel.has(c.name)} onChange={() => toggle(c.name)} />}</td>}
+                {isAdmin.value && <td>{self(c) ? <span title="HarbourOS itself" class="dim">–</span> : <input type="checkbox" aria-label={`Select ${c.name}`} checked={sel.has(c.name)} onChange={() => toggle(c.name)} />}</td>}
                 <td>{c.name}</td>
                 <td class="hide-sm muted">{c.stack ?? "–"}</td>
                 <td style={{ color: color(c) }}>● {c.state}{c.health ? ` (${c.health})` : ""}</td>

@@ -281,10 +281,10 @@ const CAL_HOSTS = /(^|\.)(icloud\.com|google\.com|outlook\.com|office365\.com|li
 export async function calendar(raw: string, days: number) {
   let u: URL;
   try { u = new URL(raw.trim().replace(/^webcals?:\/\//i, "https://")); } catch { throw bad("Paste the calendar's share link (webcal://… or https://…)."); }
-  if (u.protocol !== "https:" || !CAL_HOSTS.test(u.hostname)) throw bad("That link isn't from a calendar service HarborOS knows (iCloud, Google, Outlook, Fastmail, Proton).");
+  if (u.protocol !== "https:" || !CAL_HOSTS.test(u.hostname)) throw bad("That link isn't from a calendar service HarbourOS knows (iCloud, Google, Outlook, Fastmail, Proton).");
   let c = icsCache.get(u.href);
   if (!c || Date.now() - c.at > 10 * 60_000) {
-    const r = await fetch(u, { signal: AbortSignal.timeout(15000), redirect: "follow", headers: { Accept: "text/calendar, */*", "User-Agent": "HarborOS calendar" } });
+    const r = await fetch(u, { signal: AbortSignal.timeout(15000), redirect: "follow", headers: { Accept: "text/calendar, */*", "User-Agent": "HarbourOS calendar" } });
     if (!r.ok) throw bad(`The calendar link answered ${r.status}. Is it still shared?`, 502);
     // iCloud sends the file gzipped without saying so (no Content-Encoding).
     let body = Buffer.from(await r.arrayBuffer());

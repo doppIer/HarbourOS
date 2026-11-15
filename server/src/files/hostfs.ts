@@ -1,5 +1,5 @@
 // File access for the Files app. With TERMINAL_MODE=ssh every operation runs
-// on the host as the terminal user, so HarborOS can only read or change what
+// on the host as the terminal user, so HarbourOS can only read or change what
 // that user can (no root, no container-only view). Locally it uses this
 // machine's filesystem under FILES_ROOT (handy for development and demo).
 import fs from "node:fs";
@@ -33,7 +33,7 @@ const local = (p: string) => path.join(root, p);
 
 function sshError(err: string, p: string): Error {
   if (isAuthError(err)) return httpError(503, SSH_HINT);
-  if (/permission denied/i.test(err)) return httpError(403, `Permission denied for ${p}. HarborOS works as the terminal user on the host.`);
+  if (/permission denied/i.test(err)) return httpError(403, `Permission denied for ${p}. HarbourOS works as the terminal user on the host.`);
   if (/no such file|cannot stat|cannot access/i.test(err)) return httpError(404, `${p} doesn't exist.`);
   if (/exists/i.test(err)) return httpError(409, "Something with that name already exists.");
   if (/not a directory/i.test(err)) return httpError(400, `${p} is not a folder.`);
@@ -126,7 +126,7 @@ export const hostfs = {
   },
 
   async remove(p: string) {
-    if (protectedPath(p)) throw httpError(400, `HarborOS won't delete ${p}.`);
+    if (protectedPath(p)) throw httpError(400, `HarbourOS won't delete ${p}.`);
     if (ssh) { await run(`rm -rf -- ${q(p)}`, p); return; }
     try { await fsp.rm(local(p), { recursive: true }); } catch (e) { throw localError(e, p); }
   },

@@ -1,4 +1,4 @@
-// Clock. Edit freely: this file is loaded live by HarborOS.
+// Clock. Edit freely: this file is loaded live by HarbourOS.
 // opts.style = "plain" (default) shows big digits, "flip" shows flip cards.
 // opts.seconds = "1" shows seconds; opts.h12 = "1" uses a 12-hour clock.
 export default {

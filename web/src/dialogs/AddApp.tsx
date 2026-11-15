@@ -52,7 +52,7 @@ export default function AddApp({ app }: { app?: App }) {
   };
 
   const remove = async () => {
-    if (!app || !confirm(`Remove ${app.name} from HarborOS? Its containers aren't touched.`)) return;
+    if (!app || !confirm(`Remove ${app.name} from HarbourOS? Its containers aren't touched.`)) return;
     await api(`/api/apps/${app.id}`, { method: "DELETE" }); close();
   };
 
@@ -88,8 +88,8 @@ export default function AddApp({ app }: { app?: App }) {
 
           <label class="field">Service URL<input class="input" value={f.url} placeholder="http://100.64.0.7:4533" onInput={(e) => set({ url: e.currentTarget.value })} /></label>
 
-          <label class="check"><input type="checkbox" checked={f.openMode === "tab"} onChange={(e) => set({ openMode: e.currentTarget.checked ? "tab" : "embed" })} />Open in a new tab (for apps that can't be shown inside HarborOS)</label>
-          <label class="check"><input type="checkbox" checked={!!f.stripFrameHeaders} disabled={f.openMode === "tab"} onChange={(e) => set({ stripFrameHeaders: e.currentTarget.checked })} />Show inside HarborOS even if the app forbids it (frame proxy)</label>
+          <label class="check"><input type="checkbox" checked={f.openMode === "tab"} onChange={(e) => set({ openMode: e.currentTarget.checked ? "tab" : "embed" })} />Open in a new tab (for apps that can't be shown inside HarbourOS)</label>
+          <label class="check"><input type="checkbox" checked={!!f.stripFrameHeaders} disabled={f.openMode === "tab"} onChange={(e) => set({ stripFrameHeaders: e.currentTarget.checked })} />Show inside HarbourOS even if the app forbids it (frame proxy)</label>
           <label class="check"><input type="checkbox" checked={linkOnly} onChange={(e) => setLinkOnly(e.currentTarget.checked)} />Link only (no container)</label>
 
           {!linkOnly && (

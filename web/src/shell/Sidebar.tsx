@@ -65,7 +65,7 @@ export function Sidebar() {
             onClick={() => saveSettings({ sidebarCollapsed: !collapsed })}>
             <img src="/icons/mark.png" width={22} height={20} alt="" />
           </button>
-          <span class="brand-name">HarborOS</span>
+          <span class="brand-name">HarbourOS</span>
           <span class="brand-tools">
             <button class="iconbtn" aria-label="Collapse sidebar" onClick={() => saveSettings({ sidebarCollapsed: true })}>
               <Icon name="solar:sidebar-minimalistic-linear" />

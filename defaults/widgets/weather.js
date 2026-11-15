@@ -1,5 +1,5 @@
 // Weather from Open-Meteo (no API key). The place is set in Settings → Wall.
-// Edit freely: this file is loaded live by HarborOS.
+// Edit freely: this file is loaded live by HarbourOS.
 const WMO = {
   0: ["Clear", "sun-2-linear", "moon-linear"], 1: ["Mostly clear", "sun-2-linear", "moon-linear"],
   2: ["Partly cloudy", "cloud-sun-2-linear", "cloudy-moon-linear"], 3: ["Cloudy", "cloud-linear"],

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Run ON THE HOST, from the HarborOS folder:  sudo bash host/setup-terminal.sh
+# Run ON THE HOST, from the HarbourOS folder:  sudo bash host/setup-terminal.sh
 # Creates a "harbor" user (or uses $TERMINAL_SSH_USER), installs tmux, and
-# authorises a dedicated SSH key that only the HarborOS container holds.
+# authorises a dedicated SSH key that only the HarbourOS container holds.
 set -euo pipefail
 USER_NAME="${TERMINAL_SSH_USER:-harbor}"
 DATA_DIR="$(pwd)/data"

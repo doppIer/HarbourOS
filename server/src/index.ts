@@ -51,4 +51,4 @@ startIdleWatcher();
 setInterval(publishApps, 10_000).unref();
 
 await app.listen({ port: env.port, host: "0.0.0.0" });
-console.log(`HarborOS listening on :${env.port}`);
+console.log(`HarbourOS listening on :${env.port}`);

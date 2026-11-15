@@ -13,7 +13,7 @@ import { appContainers, restartGroup } from "../docker/stacks.js";
 let client: Anthropic | null = null;
 const getClient = () => (client ??= new Anthropic()); // reads ANTHROPIC_API_KEY from env
 
-const SYSTEM = `You are the assistant inside HarborOS, a control panel for a single home server
+const SYSTEM = `You are the assistant inside HarbourOS, a control panel for a single home server
 (Ubuntu, i5-4590, 16 GB RAM, ~29 Docker containers, reachable only over Tailscale).
 Use the tools to look at live stats, containers and logs before answering questions about them.
 To start, stop or restart anything, call propose_action: it does NOT run the action, it shows the
@@ -23,7 +23,7 @@ Be brief and concrete; numbers in plain units (GB, %, W).`;
 const tools: Anthropic.Beta.BetaTool[] = [
   { name: "get_stats", description: "Live host stats: CPU, temperature, RAM, swap, disks, network, power estimate.", input_schema: { type: "object", properties: {} } },
   { name: "list_containers", description: "All containers with stack, state, health, CPU %, RAM bytes, restart count and idle-since time.", input_schema: { type: "object", properties: {} } },
-  { name: "list_apps", description: "Apps configured in HarborOS (id, name, linked containers, auto-stop settings).", input_schema: { type: "object", properties: {} } },
+  { name: "list_apps", description: "Apps configured in HarbourOS (id, name, linked containers, auto-stop settings).", input_schema: { type: "object", properties: {} } },
   {
     name: "get_logs", description: "Last N log lines of a container.", eager_input_streaming: true,
     input_schema: { type: "object", properties: { container: { type: "string" }, lines: { type: "integer", minimum: 1, maximum: 300 } }, required: ["container"] },

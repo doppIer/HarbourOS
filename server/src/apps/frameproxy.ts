@@ -1,6 +1,6 @@
 // Some apps (Nextcloud, Proxmox, Portainer, …) send X-Frame-Options or a CSP
-// frame-ancestors rule, so browsers refuse to show them inside HarborOS. For
-// apps with "show inside HarborOS" turned on, HarborOS listens on a port of
+// frame-ancestors rule, so browsers refuse to show them inside HarbourOS. For
+// apps with "show inside HarbourOS" turned on, HarbourOS listens on a port of
 // its own (FRAME_PORTS, default 7081-7090), forwards everything (HTTP and
 // WebSockets) to the app, and drops only those two rules from the answers.
 // The Host header is passed through unchanged, so the app sees the address the
@@ -26,7 +26,7 @@ function start(port: number, target: URL) {
       res.writeHead(r.statusCode ?? 502, r.statusMessage, h);
       r.pipe(res);
     });
-    up.on("error", () => { if (!res.headersSent) res.writeHead(502, { "content-type": "text/plain" }); res.end("HarborOS couldn't reach the app."); });
+    up.on("error", () => { if (!res.headersSent) res.writeHead(502, { "content-type": "text/plain" }); res.end("HarbourOS couldn't reach the app."); });
     req.pipe(up);
   });
   server.on("upgrade", (req, sock, head) => {

@@ -16,7 +16,7 @@ export interface WidgetCtx {
   actions: { container(name: string, op: "start" | "stop" | "restart"): Promise<unknown>; open(view: string): void };
   /** Per-tile options set on the wall (e.g. which app a launcher opens). */
   opts: Record<string, string>;
-  /** GET a HarborOS API as JSON, e.g. ctx.api("/api/weather"). */
+  /** GET a HarbourOS API as JSON, e.g. ctx.api("/api/weather"). */
   api<T = any>(path: string): Promise<T>;
   /** "wall" on the tablet screen, "desk" on the dashboard. */
   mode: "wall" | "desk";

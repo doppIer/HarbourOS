@@ -1,7 +1,7 @@
 // Background module template. Copy this folder (e.g. backgrounds/ascii-harbor/),
 // add its name to backgrounds/index.json, and pick it in Settings.
 //
-// HarborOS calls mount() once and keeps the returned handle. It calls pause()
+// HarbourOS calls mount() once and keeps the returned handle. It calls pause()
 // when the tab is hidden or an app is open (if enabled in Settings), resume()
 // when it's visible again, and destroy() when you switch backgrounds.
 // Keep work inside requestAnimationFrame and stop the loop in pause().

@@ -1,6 +1,6 @@
 // Finds web apps already running on the host (containers with published TCP
 // ports that no sidebar app covers yet), and checks whether an app's page may
-// be shown inside HarborOS.
+// be shown inside HarbourOS.
 import { docker, type RawContainer } from "../docker/client.js";
 import { catalog } from "../store/catalog.js";
 import type { AppConfig } from "../protocol.js";
@@ -87,11 +87,11 @@ export async function appLogo(url: string): Promise<string | null> {
   return null;
 }
 
-/** Can the browser show `url` inside an iframe on HarborOS's origin? */
+/** Can the browser show `url` inside an iframe on HarbourOS's origin? */
 export async function probe(url: string, origin: string): Promise<{ reachable: boolean; embeddable: boolean; reason?: string }> {
   let r: Response;
   try { r = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(5000) }); }
-  catch { return { reachable: false, embeddable: true, reason: "HarborOS couldn't reach this address. Is the container running and the port right?" }; }
+  catch { return { reachable: false, embeddable: true, reason: "HarbourOS couldn't reach this address. Is the container running and the port right?" }; }
   r.body?.cancel().catch(() => {});
   const xfo = (r.headers.get("x-frame-options") ?? "").toLowerCase();
   const fa = /frame-ancestors([^;]*)/i.exec(r.headers.get("content-security-policy") ?? "")?.[1]?.trim().split(/\s+/) ?? null;

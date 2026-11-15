@@ -55,13 +55,13 @@ live.on((m) => {
 });
 
 /** Apps that open in their own tab: the ones that refuse iframes, and plain-http apps
- *  while HarborOS itself is on https (browsers block http pages inside https ones). */
+ *  while HarbourOS itself is on https (browsers block http pages inside https ones). */
 export const opensInTab = (a: App) =>
   a.openMode === "tab" || (location.protocol === "https:" && (/^http:/i.test(a.url) || !!(a.stripFrameHeaders && a.framePort)));
 
 export function navigate(v: string) {
   const tab = apps.value.find((a) => a.id === v && opensInTab(a));
-  if (tab) { // the app refuses iframes: start it if needed and open it next to HarborOS
+  if (tab) { // the app refuses iframes: start it if needed and open it next to HarbourOS
     window.open(tab.url, "_blank", "noopener");
     if (tab.status !== "running" && tab.status !== "link") fetch(`/api/apps/${tab.id}/open`, { method: "POST" }).catch(() => {});
     sidebarOpen.value = false;

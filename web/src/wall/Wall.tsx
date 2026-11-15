@@ -523,7 +523,7 @@ function ScreenSheet({ screen, look, onLook, wakeLock, close, onChange }: { scre
       <div class="wall-group">
         <label class="check"><input type="checkbox" checked={s.keepAwake} onChange={(e) => set("keepAwake", e.currentTarget.checked)} /><b>Keep the screen on</b></label>
         {s.keepAwake && wakeLock === "unsupported" && (
-          <div class="muted" style={{ fontSize: 12.5 }}>This browser can't keep the screen on here. It needs HarborOS over https (<span class="mono">tailscale serve</span>), or set the tablet's own "stay awake" / kiosk browser option.</div>
+          <div class="muted" style={{ fontSize: 12.5 }}>This browser can't keep the screen on here. It needs HarbourOS over https (<span class="mono">tailscale serve</span>), or set the tablet's own "stay awake" / kiosk browser option.</div>
         )}
         {s.keepAwake && wakeLock === "on" && <div class="muted" style={{ fontSize: 12.5 }}>On: the screen won't turn off while this page is open.</div>}
       </div>
@@ -572,7 +572,7 @@ export function Pair({ onDone, signIn }: { onDone: () => void; signIn: () => voi
     <div class="wall"><div class="wall-msg" style={{ display: "grid", gap: 16, maxWidth: 420, textAlign: "center" }}>
       <Icon name="solar:tablet-linear" size={44} />
       <div style={{ fontSize: 24, fontWeight: 600 }}>Pair this tablet</div>
-      <div class="muted">On a computer, open HarborOS → Settings → Tablets → Add tablet, then scan the QR code or type the code here.</div>
+      <div class="muted">On a computer, open HarbourOS → Settings → Tablets → Add tablet, then scan the QR code or type the code here.</div>
       <form onSubmit={(e) => { e.preventDefault(); go(); }} style={{ display: "flex", gap: 8 }}>
         <input class="input mono" style={{ height: 48, fontSize: 22, textAlign: "center", letterSpacing: "0.2em", textTransform: "uppercase" }} maxLength={6}
           value={code} placeholder="ABC123" onInput={(e) => setCode(e.currentTarget.value)} />

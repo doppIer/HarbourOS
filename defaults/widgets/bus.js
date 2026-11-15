@@ -1,6 +1,6 @@
 // Next departures for the lines you picked (line + direction + stop), from
 // the city's timetable (GTFS). Long press → Options to add lines.
-// Edit freely: loaded live by HarborOS.
+// Edit freely: loaded live by HarbourOS.
 export default {
   title: "Departures",
   sizes: ["m", "tall", "l", "w", "s"],
