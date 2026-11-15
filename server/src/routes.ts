@@ -106,13 +106,35 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/containers", async () => containers);
   app.post("/api/containers/:name/:op", async (req) => {
     const { name, op } = req.params as { name: string; op: string };
-    const c = findByName(name) ?? { Id: name };
+    const found = findByName(name);
+    const c = found ?? { Id: name };
+    // Stopping HarborOS (or its Docker proxy) from inside HarborOS would cut you off.
+    if (op === "stop" && found && isHarbor(found)) throw Object.assign(new Error("HarborOS won't stop itself. Use docker compose on the server for that."), { statusCode: 400 });
     if (op === "start") await docker.start(c.Id);
     else if (op === "stop") await docker.stop(c.Id);
     else if (op === "restart") await docker.restart(c.Id);
     else throw Object.assign(new Error("Unknown op"), { statusCode: 400 });
     await refresh(); publishApps();
     return { ok: true };
+  });
+
+  app.post("/api/containers/bulk", async (req) => {
+    const { names, op } = req.body as { names?: string[]; op?: string };
+    if (!Array.isArray(names) || !names.length || names.length > 200 || !["start", "stop", "restart"].includes(String(op))) throw Object.assign(new Error("Pick containers and an action."), { statusCode: 400 });
+    const results: { name: string; ok: boolean; error?: string }[] = [];
+    // A few at a time: fast, without hammering an old CPU.
+    const queue = [...names];
+    await Promise.all(Array.from({ length: 4 }, async () => {
+      for (let n = queue.shift(); n; n = queue.shift()) {
+        const c = findByName(n);
+        if (!c) { results.push({ name: n, ok: false, error: "not found" }); continue; }
+        if (op === "stop" && isHarbor(c)) { results.push({ name: n, ok: false, error: "HarborOS itself" }); continue; }
+        try { await (op === "start" ? docker.start(c.Id) : op === "stop" ? docker.stop(c.Id) : docker.restart(c.Id)); results.push({ name: n, ok: true }); }
+        catch (e) { results.push({ name: n, ok: false, error: (e as Error).message }); }
+      }
+    }));
+    await refresh(); publishApps();
+    return { results };
   });
 
   // ---------- settings ----------
@@ -301,4 +323,9 @@ function demoFound(host: string): Found[] {
     { key: "uptime-kuma", name: "Uptime Kuma", icon: "solar:pulse-linear", url: `http://${host}:3001`, ports: [3001], containers: ["uptime-kuma"], running: true },
     { key: "stack:paperless", name: "Paperless", icon: "solar:document-linear", url: `http://${host}:8000`, ports: [8000], containers: ["paperless-web", "paperless-db"], composeProject: "paperless", running: false },
   ];
+}
+
+/** HarborOS's own containers (this app and its Docker proxy). */
+function isHarbor(c: { Labels?: Record<string, string>; Image?: string }) {
+  return c.Labels?.["com.docker.compose.project"] === "harboros" || /docker-socket-proxy|^harboros/.test(c.Image ?? "");
 }

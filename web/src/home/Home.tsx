@@ -119,40 +119,80 @@ function AttentionRow({ c }: { c: ContainerInfo }) {
 
 function ContainerTable({ list }: { list: ContainerInfo[] }) {
   const [sort, setSort] = useState<"name" | "cpu" | "mem">("name");
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
   const rows = [...list].sort((a, b) => sort === "name" ? (a.stack ?? a.name).localeCompare(b.stack ?? b.name) || a.name.localeCompare(b.name) : sort === "cpu" ? (b.cpu ?? -1) - (a.cpu ?? -1) : (b.mem ?? -1) - (a.mem ?? -1));
-  const op = (n: string, o: string) => api(`/api/containers/${encodeURIComponent(n)}/${o}`, { method: "POST" });
+  const self = (c: ContainerInfo) => c.stack === "harboros"; // stopping these would cut you off
+  const op = (n: string, o: string) => api(`/api/containers/${encodeURIComponent(n)}/${o}`, { method: "POST" }).catch((e) => setMsg((e as Error).message));
   const color = (c: ContainerInfo) => c.state === "running" ? (c.health === "unhealthy" ? "var(--err)" : c.health === "starting" ? "var(--warn)" : "var(--ok)") : c.state === "restarting" ? "var(--err)" : "var(--t4)";
+
+  // Drop selections of containers that went away.
+  const names = new Set(list.map((c) => c.name));
+  const picked = [...sel].filter((n) => names.has(n));
+  const toggle = (n: string) => { const s = new Set(sel); s.has(n) ? s.delete(n) : s.add(n); setSel(s); setMsg(""); };
+  const selectable = rows.filter((c) => !self(c));
+  const allOn = selectable.length > 0 && selectable.every((c) => sel.has(c.name));
+  const pickedRunning = picked.filter((n) => list.find((c) => c.name === n)?.state === "running");
+  const pickedStopped = picked.filter((n) => list.find((c) => c.name === n)?.state !== "running");
+
+  const bulk = async (o: "stop" | "start" | "restart", targets: string[]) => {
+    if (!targets.length) return;
+    if (o === "stop" && !confirm(`Stop ${targets.length} container${targets.length > 1 ? "s" : ""}?\n\n${targets.join("\n")}`)) return;
+    setBusy(o); setMsg("");
+    try {
+      const r = await api<{ results: { name: string; ok: boolean; error?: string }[] }>("/api/containers/bulk", { method: "POST", json: { names: targets, op: o } });
+      const bad = r.results.filter((x) => !x.ok);
+      setMsg(bad.length ? `Couldn't ${o} ${bad.map((x) => `${x.name} (${x.error})`).join(", ")}` : "");
+      if (!bad.length) setSel(new Set());
+    } catch (e) { setMsg((e as Error).message); } finally { setBusy(""); }
+  };
+
   return (
-    <div class="rows" style={{ overflowX: "auto" }}>
-      <table class="ct">
-        <thead><tr>
-          <th style={{ cursor: "pointer" }} onClick={() => setSort("name")}>Name</th>
-          <th class="hide-sm">Stack</th><th>State</th>
-          <th style={{ cursor: "pointer" }} onClick={() => setSort("cpu")}>CPU</th>
-          <th style={{ cursor: "pointer" }} onClick={() => setSort("mem")}>RAM</th>
-          <th class="hide-sm">Uptime</th><th class="hide-sm">Restarts</th><th />
-        </tr></thead>
-        <tbody class="mono">
-          {rows.map((c) => (
-            <tr key={c.id}>
-              <td>{c.name}</td>
-              <td class="hide-sm muted">{c.stack ?? "–"}</td>
-              <td style={{ color: color(c) }}>● {c.state}{c.health ? ` (${c.health})` : ""}</td>
-              <td>{c.cpu != null ? `${c.cpu.toFixed(1)}%` : "–"}</td>
-              <td>{c.mem ? fmt.bytes(c.mem).toString() : "–"}</td>
-              <td class="hide-sm muted">{c.state === "running" && c.startedAt ? fmt.ago(Date.parse(c.startedAt)) : "–"}</td>
-              <td class="hide-sm" style={{ color: c.restartCount > 3 ? "var(--err)" : undefined }}>{c.restartCount}</td>
-              <td class="acts">{isAdmin.value && <>
-                {c.state === "running"
-                  ? <><button class="iconbtn" aria-label="Restart" onClick={() => op(c.name, "restart")}><Icon name="solar:restart-linear" size={15} /></button>
-                      <button class="iconbtn" aria-label="Stop" onClick={() => op(c.name, "stop")}><Icon name="solar:stop-circle-linear" size={15} /></button></>
-                  : <button class="iconbtn" aria-label="Start" onClick={() => op(c.name, "start")}><Icon name="solar:play-circle-linear" size={15} /></button>}
-                <button class="iconbtn" aria-label="Logs" onClick={() => (dialog.value = { kind: "logs", container: c.name })}><Icon name="solar:document-text-linear" size={15} /></button>
-              </>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {isAdmin.value && picked.length > 0 && (
+        <div class="bulkbar">
+          <span><b>{picked.length}</b> selected</span>
+          {pickedRunning.length > 0 && <button class="btn danger" disabled={!!busy} onClick={() => bulk("stop", pickedRunning)}><Icon name="solar:stop-circle-linear" size={15} />{busy === "stop" ? "Stopping…" : `Stop ${pickedRunning.length}`}</button>}
+          {pickedRunning.length > 0 && <button class="btn" disabled={!!busy} onClick={() => bulk("restart", pickedRunning)}><Icon name="solar:restart-linear" size={15} />{busy === "restart" ? "Restarting…" : "Restart"}</button>}
+          {pickedStopped.length > 0 && <button class="btn" disabled={!!busy} onClick={() => bulk("start", pickedStopped)}><Icon name="solar:play-circle-linear" size={15} />{busy === "start" ? "Starting…" : `Start ${pickedStopped.length}`}</button>}
+          <button class="btn" style={{ marginLeft: "auto" }} onClick={() => setSel(new Set())}>Clear</button>
+        </div>
+      )}
+      {msg && <div class="err-text" style={{ margin: "0 0 8px" }}>{msg}</div>}
+      <div class="rows" style={{ overflowX: "auto" }}>
+        <table class="ct">
+          <thead><tr>
+            {isAdmin.value && <th style={{ width: 28 }}><input type="checkbox" aria-label="Select all" checked={allOn} onChange={() => setSel(allOn ? new Set() : new Set(selectable.map((c) => c.name)))} /></th>}
+            <th style={{ cursor: "pointer" }} onClick={() => setSort("name")}>Name</th>
+            <th class="hide-sm">Stack</th><th>State</th>
+            <th style={{ cursor: "pointer" }} onClick={() => setSort("cpu")}>CPU</th>
+            <th style={{ cursor: "pointer" }} onClick={() => setSort("mem")}>RAM</th>
+            <th class="hide-sm">Uptime</th><th class="hide-sm">Restarts</th><th />
+          </tr></thead>
+          <tbody class="mono">
+            {rows.map((c) => (
+              <tr key={c.id} class={sel.has(c.name) ? "on" : ""}>
+                {isAdmin.value && <td>{self(c) ? <span title="HarborOS itself" class="dim">–</span> : <input type="checkbox" aria-label={`Select ${c.name}`} checked={sel.has(c.name)} onChange={() => toggle(c.name)} />}</td>}
+                <td>{c.name}</td>
+                <td class="hide-sm muted">{c.stack ?? "–"}</td>
+                <td style={{ color: color(c) }}>● {c.state}{c.health ? ` (${c.health})` : ""}</td>
+                <td>{c.cpu != null ? `${c.cpu.toFixed(1)}%` : "–"}</td>
+                <td>{c.mem ? fmt.bytes(c.mem).toString() : "–"}</td>
+                <td class="hide-sm muted">{c.state === "running" && c.startedAt ? fmt.ago(Date.parse(c.startedAt)) : "–"}</td>
+                <td class="hide-sm" style={{ color: c.restartCount > 3 ? "var(--err)" : undefined }}>{c.restartCount}</td>
+                <td class="acts">{isAdmin.value && <>
+                  {c.state === "running"
+                    ? <><button class="iconbtn" aria-label={`Restart ${c.name}`} title="Restart" onClick={() => op(c.name, "restart")}><Icon name="solar:restart-linear" size={15} /></button>
+                        {!self(c) && <button class="iconbtn" aria-label={`Stop ${c.name}`} title="Stop" onClick={() => confirm(`Stop ${c.name}?`) && op(c.name, "stop")}><Icon name="solar:stop-circle-linear" size={15} /></button>}</>
+                    : <button class="iconbtn" aria-label={`Start ${c.name}`} title="Start" onClick={() => op(c.name, "start")}><Icon name="solar:play-circle-linear" size={15} /></button>}
+                  <button class="iconbtn" aria-label={`Logs of ${c.name}`} title="Logs" onClick={() => (dialog.value = { kind: "logs", container: c.name })}><Icon name="solar:document-text-linear" size={15} /></button>
+                </>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
