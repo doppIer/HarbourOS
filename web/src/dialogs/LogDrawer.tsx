@@ -28,7 +28,7 @@ export default function LogDrawer({ container }: { container: string }) {
           <label class="check" style={{ marginLeft: "auto", fontSize: 12.5 }}><input type="checkbox" checked={follow} onChange={(e) => setFollow(e.currentTarget.checked)} />Follow</label>
           <button class="iconbtn" aria-label="Close" onClick={close}><Icon name="solar:close-circle-linear" /></button>
         </header>
-        <div ref={box} class="mono" style={{ flex: 1, overflow: "auto", padding: "10px 16px", fontSize: 12, lineHeight: 1.6, color: "var(--t2)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+        <div ref={box} class="mono" style={{ flex: 1, overflow: "auto", padding: "12px 16px", fontSize: 12, lineHeight: 1.6, color: "var(--t2)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
           {lines.length ? lines.map((l, i) => <div key={i} style={/error|fatal|panic|exception/i.test(l) ? { color: "var(--err)" } : undefined}>{l}</div>) : <span class="dim">Waiting for log lines…</span>}
         </div>
       </div>

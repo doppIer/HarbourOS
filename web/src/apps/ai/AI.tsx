@@ -55,7 +55,7 @@ function ActionCard({ a, onDone }: { a: Action; onDone: (s: string) => void }) {
           {err && <div class="err-text">{err}</div>}
         </div>
         {a.status === "pending" ? (
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <button class="btn" disabled={busy} onClick={() => decide(false)}>Decline</button>
             <button class="btn primary" disabled={busy} onClick={() => decide(true)}>{busy ? "Running…" : verb}</button>
           </div>
@@ -152,7 +152,7 @@ function Chat() {
             </div>
           ))}
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); send(); }} style={{ padding: "10px clamp(12px, 4vw, 48px) calc(12px + var(--sab))", borderTop: "1px solid var(--line)", display: "flex", gap: 8 }}>
+        <form onSubmit={(e) => { e.preventDefault(); send(); }} style={{ padding: "12px clamp(12px, 4vw, 48px) calc(12px + var(--sab))", borderTop: "1px solid var(--line)", display: "flex", gap: 8 }}>
           <textarea class="input" rows={1} placeholder="Ask Claude about your server" value={input} style={{ minHeight: 38, maxHeight: 160 }}
             onInput={(e) => setInput(e.currentTarget.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
@@ -191,7 +191,7 @@ export default function AI() {
 
   if (pick) return (
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderBottom: "1px solid var(--line)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 8px", borderBottom: "1px solid var(--line)" }}>
         <button class="it" style={{ width: "auto", height: 28 }} onClick={() => setPick(null)}><Icon name="solar:arrow-left-linear" size={15} />Assistants</button>
         <span style={{ fontWeight: 600 }}>{pick.title}</span>
         <span class="dim" style={{ fontSize: 12 }}>keeps running on the server when you leave</span>
@@ -215,7 +215,7 @@ export default function AI() {
         {AGENTS.map((a) => (
           <button key={a.id} class="agent" onClick={() => setPick({ session: a.id, program: a.id, title: a.title })}>
             <span class="agent-logo">{a.logo}</span>
-            <span style={{ display: "grid", gap: 3, textAlign: "left", minWidth: 0 }}>
+            <span style={{ display: "grid", gap: 4, textAlign: "left", minWidth: 0 }}>
               <span style={{ fontWeight: 600, fontSize: 15 }}>{a.title} <span class="dim" style={{ fontWeight: 400, fontSize: 12.5 }}>· {a.by}</span></span>
               <span class="muted" style={{ fontSize: 13 }}>{a.line}</span>
             </span>
@@ -228,7 +228,7 @@ export default function AI() {
         <Logo path={LOGO_PATHS.ollama} color="var(--t2)" /> Local models
         <span class="dim" style={{ fontSize: 12, fontWeight: 400 }}>through Ollama, nothing leaves the server</span>
       </div>
-      <div class="rows" style={{ padding: 14, display: "grid", gap: 12 }}>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 12 }}>
         {st && !st.ollama && (
           <div class="muted" style={{ fontSize: 13 }}>Ollama isn't on the server yet. Install it with <span class="mono">curl -fsSL https://ollama.com/install.sh | sh</span>, or run the <span class="mono">ollama/ollama</span> container from the Store. On an i5 with 16 GB, models up to ~8B (e.g. <span class="mono">llama3.2:3b</span>, <span class="mono">qwen2.5-coder:7b</span>) run on the CPU.</div>
         )}

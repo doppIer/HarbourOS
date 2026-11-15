@@ -37,7 +37,7 @@ export function TerminalTabs({ fixed }: { fixed?: { name: string; program: strin
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: "#0f1011" }}>
       {!fixed && (
-        <div style={{ display: "flex", gap: 2, padding: "6px 8px", borderBottom: "1px solid var(--line)", overflowX: "auto" }}>
+        <div style={{ display: "flex", gap: 2, padding: "8px 8px", borderBottom: "1px solid var(--line)", overflowX: "auto" }}>
           {tabs.map((t) => (
             <div key={t} class={`it ${t === active ? "on" : ""}`} style={{ width: "auto", height: 28 }} onClick={() => setActive(t)}>
               <Icon name="solar:programming-linear" size={15} /><span class="mono" style={{ fontSize: 12 }}>{t}</span>
@@ -57,7 +57,7 @@ export function TerminalTabs({ fixed }: { fixed?: { name: string; program: strin
         ))}
       </div>
       {touch && (
-        <div style={{ display: "flex", gap: 4, padding: "6px 6px calc(6px + var(--sab))", borderTop: "1px solid var(--line)", overflowX: "auto" }}>
+        <div style={{ display: "flex", gap: 4, padding: "8px 8px calc(8px + var(--sab))", borderTop: "1px solid var(--line)", overflowX: "auto" }}>
           {KEYS.map(([label, seq]) => (
             <button key={label} class="btn mono" style={{ minWidth: 40, justifyContent: "center", ...(label === "Ctrl" && ctrlOn ? { background: "var(--acc)", color: "#0b0b18" } : {}) }}
               onPointerDown={(e) => e.preventDefault()}

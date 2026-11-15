@@ -41,13 +41,13 @@ function Account() {
   return (
     <>
       <div class="sec-title">Account</div>
-      <div class="rows" style={{ padding: 16, display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr" }}>
         <label class="field">Name<input class="input" value={name} onInput={(e) => { setName(e.currentTarget.value); setMsg({}); }} /></label>
         <label class="field">Email<input class="input" value={u.email} disabled /></label>
         <div style={{ gridColumn: "span 2" }}><button class="btn" onClick={saveName}>Save name</button></div>
         <label class="field">Current password<input class="input" type="password" autoComplete="current-password" value={cur} onInput={(e) => { setCur(e.currentTarget.value); setMsg({}); }} /></label>
         <label class="field">New password<input class="input" type="password" autoComplete="new-password" value={next} onInput={(e) => { setNext(e.currentTarget.value); setMsg({}); }} /></label>
-        <div style={{ gridColumn: "span 2", display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ gridColumn: "span 2", display: "flex", gap: 12, alignItems: "center" }}>
           <button class="btn" onClick={savePw}>Change password</button>
           {msg.ok && <span class="muted">{msg.ok}</span>}
           {msg.err && <span class="err-text">{msg.err}</span>}
@@ -170,7 +170,7 @@ function AdminSettings() {
       <Tablets />
 
       <div class="sec-title">Sign-in screen</div>
-      <div class="rows" style={{ padding: 16, display: "grid", gap: 14 }}>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
         <label class="check"><input type="checkbox" checked={f.allowSignup} onChange={(e) => set({ allowSignup: e.currentTarget.checked })} />
           Show "Sign up" on the sign-in screen (new accounts wait for your approval)</label>
         <label class="field">Background<BgPicker list={bgList} extra={aura} value={f.loginBackground.module} onChange={(m) => setLbg({ module: m })} /></label>
@@ -179,7 +179,7 @@ function AdminSettings() {
       </div>
 
       <div class="sec-title">Appearance</div>
-      <div class="rows" style={{ padding: 16, display: "grid", gap: 14 }}>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
         <label class="field">Accent color
           <div style={{ display: "flex", gap: 8 }}>
             <input type="color" value={f.accent} onInput={(e) => set({ accent: e.currentTarget.value })} style={{ width: 44, height: 34, border: 0, background: "none" }} />
@@ -196,7 +196,7 @@ function AdminSettings() {
       </div>
 
       <div class="sec-title">Power</div>
-      <div class="rows" style={{ padding: 16, display: "grid", gap: 14, gridTemplateColumns: "1fr 1fr" }}>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr" }}>
         <label class="field">Price per kWh<input class="input mono" type="number" step="0.01" value={f.pricePerKwh} onInput={(e) => set({ pricePerKwh: Number(e.currentTarget.value) })} /></label>
         <label class="field">Currency<input class="input" value={f.currency} onInput={(e) => set({ currency: e.currentTarget.value })} /></label>
         <label class="field" style={{ gridColumn: "span 2" }}>Baseline watts (board, disks, fans, PSU loss; added to CPU package power)
@@ -214,7 +214,7 @@ function AdminSettings() {
           <input class="input mono" type="number" min={1} value={f.unmountAfterMinutes} onInput={(e) => set({ unmountAfterMinutes: Number(e.currentTarget.value) })} /></label>
       </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 20 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 20 }}>
         <button class="btn primary" onClick={save}>Save settings</button>
         {saved && <span class="muted">{saved}</span>}
         {err && <span class="err-text">{err}</span>}
@@ -257,8 +257,8 @@ function Tablets() {
             <button class="btn primary" onClick={make}><Icon name="solar:qr-code-linear" size={15} />Add tablet</button>
           </div>
         ) : (
-          <div class="row" style={{ alignItems: "flex-start", gap: 18, padding: 16, flexWrap: "wrap" }}>
-            {pair.qr && <div style={{ width: 168, height: 168, background: "#fff", padding: 6 }} dangerouslySetInnerHTML={{ __html: pair.qr }} />}
+          <div class="row" style={{ alignItems: "flex-start", gap: 20, padding: 16, flexWrap: "wrap" }}>
+            {pair.qr && <div style={{ width: 168, height: 168, background: "#fff", padding: 8 }} dangerouslySetInnerHTML={{ __html: pair.qr }} />}
             <div style={{ display: "grid", gap: 8, flex: 1, minWidth: 220 }}>
               <div>Scan with the tablet's camera, or open <span class="mono">{location.origin}/wall</span> on it and type:</div>
               <div class="mono" style={{ fontSize: 30, letterSpacing: "0.2em" }}>{pair.code}</div>

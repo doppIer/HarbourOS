@@ -100,12 +100,12 @@ export default function AddApp({ app }: { app?: App }) {
                 </select>
               </label>
               <label class="field">Containers
-                <select class="input" multiple style={{ height: 120, padding: 6 }} onChange={(e) => set({ containers: [...e.currentTarget.selectedOptions].map((o) => o.value) })}>
+                <select class="input" multiple style={{ height: 120, padding: 8 }} onChange={(e) => set({ containers: [...e.currentTarget.selectedOptions].map((o) => o.value) })}>
                   {names.map((n) => <option key={n} value={n} selected={f.containers.includes(n)}>{n}</option>)}
                 </select>
               </label>
               <label class="field">Health check URL (optional, defaults to the service URL)<input class="input" value={f.healthUrl} placeholder="http://100.64.0.7:4533/ping" onInput={(e) => set({ healthUrl: e.currentTarget.value })} /></label>
-              <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 12 }}>
                 <label class="check"><input type="checkbox" checked={f.startOnDemand} onChange={(e) => set({ startOnDemand: e.currentTarget.checked })} />Start when opened</label>
                 <label class="check"><input type="checkbox" checked={f.idleStopMinutes > 0} disabled={f.alwaysOn} onChange={(e) => set({ idleStopMinutes: e.currentTarget.checked ? 30 : 0 })} />
                   Stop after

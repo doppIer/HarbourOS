@@ -69,7 +69,7 @@ export function Home() {
               <div class={`tile ${item.size} edit`} draggable
                 onDragStart={() => setDragI(i)} onDragOver={(e) => e.preventDefault()}
                 onDrop={() => { if (dragI == null) return; const l = [...layout]; const [m] = l.splice(dragI, 1); l.splice(i, 0, m); update(l); setDragI(null); }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span class="mono" style={{ fontSize: 12.5 }}>{item.widget}</span>
                   <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
                     <button class="btn" title="Change size" onClick={() => { const l = [...layout]; l[i] = { ...item, size: SIZES[(SIZES.indexOf(item.size) + 1) % SIZES.length] }; update(l); }}>{item.size.toUpperCase()}</button>

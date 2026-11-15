@@ -264,7 +264,7 @@ function Detail({ a, installs, jobs, onClose }: { a: StoreApp; installs: StoreIn
                 <input class="input mono" value={f.project} onInput={(e) => set({ project: e.currentTarget.value.toLowerCase() })} />
               </label>
               {portsShown.length > 0 && (
-                <div class="field" style={{ display: "grid", gap: 6, fontSize: 12, color: "var(--t3)" }}>Ports
+                <div class="field" style={{ display: "grid", gap: 8, fontSize: 12, color: "var(--t3)" }}>Ports
                   <div class="rows">
                     {portsShown.map((p) => {
                       const key = `${p.service}:${p.target}/${p.protocol}`;

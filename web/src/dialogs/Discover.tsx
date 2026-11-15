@@ -55,12 +55,12 @@ export default function Discover() {
           {list && list.length > 0 && (
             <div class="rows">
               {list.map((f) => (
-                <div key={f.key} class="row" style={{ alignItems: "center", gap: 10 }}>
+                <div key={f.key} class="row" style={{ alignItems: "center", gap: 12 }}>
                   <input type="checkbox" checked={!!pick[f.key]} onChange={() => toggle(f)} aria-label={`Add ${f.name}`} />
                   <Icon name={f.icon} size={22} />
                   <div class="grow" style={{ display: "grid", gap: 4, minWidth: 0 }}>
                     <input class="input" style={{ height: 28 }} value={f.name} onInput={(e) => edit(f, { name: e.currentTarget.value })} />
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <input class="input mono" style={{ height: 26, fontSize: 12 }} value={f.url} onInput={(e) => edit(f, { url: e.currentTarget.value })} />
                       {f.ports.length > 1 && (
                         <select class="input" style={{ height: 26, width: 90, fontSize: 12 }} value={new URL(f.url).port}

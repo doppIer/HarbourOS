@@ -556,7 +556,7 @@ export function Pair({ onDone, signIn }: { onDone: () => void; signIn: () => voi
   };
   useEffect(() => { if (code.length >= 6) go(code); }, []);
   return (
-    <div class="wall"><div class="wall-msg" style={{ display: "grid", gap: 14, maxWidth: 420, textAlign: "center" }}>
+    <div class="wall"><div class="wall-msg" style={{ display: "grid", gap: 16, maxWidth: 420, textAlign: "center" }}>
       <Icon name="solar:tablet-linear" size={44} />
       <div style={{ fontSize: 24, fontWeight: 600 }}>Pair this tablet</div>
       <div class="muted">On a computer, open HarborOS → Settings → Tablets → Add tablet, then scan the QR code or type the code here.</div>
