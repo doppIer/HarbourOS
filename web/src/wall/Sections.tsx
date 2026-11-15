@@ -6,10 +6,7 @@ import * as V from "./voice";
 import * as P from "./player";
 
 // ---------------- AI Talk ----------------
-const SUGGEST = {
-  "en-US": ["Play some music", "When is the next bus?", "What's on today?", "Pause", "What time is it?"],
-  "tr-TR": ["Müzik aç", "Sıradaki otobüs ne zaman?", "Bugün ne var?", "Durdur", "Saat kaç?"],
-} as Record<string, string[]>;
+const SUGGEST = ["Play some music", "When is the next bus?", "What's on today?", "Pause", "What time is it?"];
 
 export function Talk({ wakeWord }: { wakeWord: string }) {
   const [typed, setTyped] = useState("");
@@ -19,11 +16,6 @@ export function Talk({ wakeWord }: { wakeWord: string }) {
   return (
     <div class="talk">
       <div class="talk-top">
-        <div class="seg" role="group" aria-label="Language">
-          {[["en-US", "EN"], ["tr-TR", "TR"]].map(([v, n]) => (
-            <button class={V.lang.value === v ? "on" : ""} onClick={() => V.setLang(v)}>{n}</button>
-          ))}
-        </div>
         <label class={`talk-wake ${V.wakeOn.value ? "on" : ""}`}>
           <input type="checkbox" checked={V.wakeOn.value} disabled={!V.canListen} onChange={(e) => V.setWake(e.currentTarget.checked)} />
           <span class="sw" /> Listen for “{cap(wakeWord)}”
@@ -43,7 +35,7 @@ export function Talk({ wakeWord }: { wakeWord: string }) {
       </div>
 
       <div class="talk-chips">
-        {(SUGGEST[V.lang.value] ?? SUGGEST["en-US"]).map((s) => <button class="chip" onClick={() => send(s)}>{s}</button>)}
+        {SUGGEST.map((s) => <button class="chip" onClick={() => send(s)}>{s}</button>)}
       </div>
       <form class="talk-type" onSubmit={(e) => { e.preventDefault(); send(typed); }}>
         <input class="input" placeholder="Or type here…" value={typed} onInput={(e) => setTyped(e.currentTarget.value)} />

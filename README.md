@@ -286,9 +286,9 @@ docs/         brand assets and screenshots
 
 ## Voice
 
-The wall's AI Talk speaks through one of these (Settings → Assistant → Voice):
+The wall's AI Talk (English for now) speaks through one of these (Settings → Assistant → Voice):
 
-- **Piper + Kokoro** (default): two small containers in `docker-compose.yml`, all on your server. Piper speaks Turkish (and many other languages), Kokoro speaks very natural English. Kokoro's image is about 2 GB; remove the `kokoro` service if you don't want it and English falls back to Piper.
+- **Kokoro + Piper** (default): two small containers in `docker-compose.yml`, all on your server. Kokoro sounds very natural; Piper is the light backup when Kokoro is down. Kokoro's image is about 2 GB; remove the `kokoro` service if you don't want it and Piper speaks instead.
 - **ElevenLabs**: paste your API key and a voice ID. The key stays on the server.
 - **Tablet's own voice**: no server needed. On an iPad, download an "Enhanced" voice under Settings → Accessibility → Spoken Content → Voices for a much better sound.
 

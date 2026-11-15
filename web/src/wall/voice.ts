@@ -19,7 +19,7 @@ export const answer = signal("");
 export const via = signal("");
 export const err = signal("");
 export const wakeOn = signal(store("harbor-wake") === "1");
-export const lang = signal(store("harbor-lang") || (navigator.language.startsWith("tr") ? "tr-TR" : "en-US"));
+export const lang = signal("en-US");
 export const lastMusic = signal(0); // bumps when a "play" command starts music
 
 const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -90,7 +90,6 @@ export function setWake(on: boolean) {
   if (on) start("wake"); else { stopRec(); phase.value = "idle"; }
 }
 export function resumeWake() { if (wakeOn.value && !rec) start("wake"); }
-export function setLang(l: string) { lang.value = l; store("harbor-lang", l); if (rec) start(mode ?? "wake"); }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) resumeWake(); });
 
 /** Speak with the voice picked in Settings (Piper / Kokoro / ElevenLabs on the server), or the browser's own. */
@@ -108,7 +107,7 @@ async function speak(text: string) {
 
 let voiceEl: HTMLAudioElement | null = null;
 async function playServer(text: string) {
-  const r = await fetch("/api/assistant/speak", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, lang: lang.value }) });
+  const r = await fetch("/api/assistant/speak", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
   if (!r.ok) throw new Error(String(r.status));
   const url = URL.createObjectURL(await r.blob());
   voiceEl ??= new Audio();
@@ -139,7 +138,7 @@ export async function ask(text: string) {
   heard.value = text; answer.value = ""; err.value = ""; via.value = "";
   phase.value = "thinking";
   try {
-    const r = await api<Reply>("/api/assistant", { method: "POST", json: { text, lang: lang.value, ...ctx } });
+    const r = await api<Reply>("/api/assistant", { method: "POST", json: { text, ...ctx } });
     via.value = r.via;
     const m = r.music;
     if (m?.action === "play" && m.tracks) { player.play(m.tracks, 0, m.label ?? ""); lastMusic.value++; }

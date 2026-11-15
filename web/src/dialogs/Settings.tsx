@@ -353,12 +353,12 @@ function AssistantSettings({ f, set }: { f: Settings; set: (p: Partial<Settings>
   );
 }
 
-const V_DEF = { engine: "local", piperTr: "tr_TR-dfki-medium", piperEn: "en_US-ryan-high", kokoro: "af_heart", elevenVoice: "", elevenModel: "eleven_multilingual_v2" } as const;
+const V_DEF = { engine: "local", piperEn: "en_US-ryan-high", kokoro: "af_heart", elevenVoice: "", elevenModel: "eleven_multilingual_v2" } as const;
 const ENGINES = [
-  ["local", "Piper + Kokoro", "On this server, free. Turkish with Piper, English with Kokoro."],
-  ["piper", "Piper", "On this server, free and very fast. Every language it has a voice for."],
-  ["kokoro", "Kokoro", "On this server, free. The most natural local English (Turkish falls back to Piper)."],
-  ["elevenlabs", "ElevenLabs", "Cloud, sounds human, Turkish too. Needs your API key; billed per character."],
+  ["local", "Kokoro + Piper", "On this server, free. Kokoro speaks; Piper takes over if Kokoro is down."],
+  ["piper", "Piper", "On this server, free and very fast. A bit flatter than Kokoro, much lighter."],
+  ["kokoro", "Kokoro", "On this server, free. The most natural local voice. Needs about 2 GB."],
+  ["elevenlabs", "ElevenLabs", "Cloud, sounds human. Needs your API key; billed per character."],
   ["browser", "Tablet's own voice", "No server needed. Quality depends on the device."],
 ] as const;
 
@@ -371,13 +371,13 @@ function VoiceSettings({ f, a, setA }: { f: Settings; a: NonNullable<Settings["a
   const pick = (value: string, opts: string[] | null | undefined, on: (x: string) => void, filter?: (x: string) => boolean) => opts?.length
     ? <select class="input" value={value} onChange={(e) => on(e.currentTarget.value)}>{[...new Set([value, ...opts.filter(filter ?? (() => true))])].map((x) => <option value={x}>{x}</option>)}</select>
     : <input class="input mono" value={value} onChange={(e) => on(e.currentTarget.value.trim())} />;
-  const test = async (lang: string) => {
+  const test = async () => {
     setMsg("Saving and asking the server…");
     try {
       await saveSettings({ ...f, assistant: { ...a, voice: v } } as any);
-      const text = lang === "tr" ? "Merhaba, ben Harbor. Otobüsün yedi dakika sonra kalkıyor." : "Hi, I'm Harbor. Your bus leaves in seven minutes.";
-      if (v.engine === "browser") { const u = new SpeechSynthesisUtterance(text); u.lang = lang === "tr" ? "tr-TR" : "en-US"; speechSynthesis.speak(u); setMsg(""); return; }
-      const r = await fetch("/api/assistant/speak", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, lang }) });
+      const text = "Hi, I'm Harbor. Your bus leaves in seven minutes.";
+      if (v.engine === "browser") { const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; speechSynthesis.speak(u); setMsg(""); return; }
+      const r = await fetch("/api/assistant/speak", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `Failed (${r.status})`);
       setMsg(`Playing (${r.headers.get("x-voice")})`);
       const el = new Audio(URL.createObjectURL(await r.blob())); el.onended = () => setMsg(""); await el.play();
@@ -397,9 +397,8 @@ function VoiceSettings({ f, a, setA }: { f: Settings; a: NonNullable<Settings["a
           ))}
         </div>
         {(v.engine === "local" || v.engine === "piper" || v.engine === "kokoro") && <>
-          <label class="field">Piper · Turkish voice{pick(v.piperTr, list?.piper, (x) => setV({ piperTr: x }), (x) => x.startsWith("tr"))}{list && !list.piper && down("Piper")}</label>
-          {v.engine === "piper" && <label class="field">Piper · English voice{pick(v.piperEn, list?.piper, (x) => setV({ piperEn: x }), (x) => x.startsWith("en"))}</label>}
-          {v.engine !== "piper" && <label class="field">Kokoro · English voice{pick(v.kokoro, list?.kokoro, (x) => setV({ kokoro: x }))}{list && !list.kokoro && down("Kokoro")}</label>}
+          {v.engine !== "kokoro" && <label class="field">Piper voice{pick(v.piperEn, list?.piper, (x) => setV({ piperEn: x }))}{list && !list.piper && down("Piper")}</label>}
+          {v.engine !== "piper" && <label class="field">Kokoro voice{pick(v.kokoro, list?.kokoro, (x) => setV({ kokoro: x }))}{list && !list.kokoro && down("Kokoro")}</label>}
         </>}
         {v.engine === "elevenlabs" && <>
           <label class="field">API key<input class="input" type="password" placeholder={f.hasElevenKey ? "Saved. Type to replace it." : "From elevenlabs.io → Profile → API keys"} onChange={(e) => setV({ elevenKey: e.currentTarget.value.trim() })} /></label>
@@ -412,8 +411,7 @@ function VoiceSettings({ f, a, setA }: { f: Settings; a: NonNullable<Settings["a
           </label>
         </>}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button class="btn" type="button" onClick={() => test("tr")}>Test in Turkish</button>
-          <button class="btn" type="button" onClick={() => test("en")}>Test in English</button>
+          <button class="btn" type="button" onClick={test}>Test voice</button>
           <span class="dim" style={{ fontSize: 13 }}>{msg}</span>
         </div>
       </div>

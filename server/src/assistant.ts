@@ -27,10 +27,10 @@ export interface AssistantSettings {
   wakeWord: string;
   voice: VoiceSettings;
 }
-// "local" = Piper for Turkish, Kokoro for English (Kokoro has no Turkish).
+// "local" = Kokoro, with Piper as the backup when Kokoro is down.
 export interface VoiceSettings {
   engine: "local" | "piper" | "kokoro" | "elevenlabs" | "browser";
-  piperTr: string; piperEn: string; kokoro: string;
+  piperEn: string; kokoro: string;
   elevenVoice: string; elevenModel: string; elevenKey?: string;
 }
 export interface MusicSettings { navidromeUrl: string; navidromeUser: string; navidromePass?: string }
@@ -38,7 +38,7 @@ export interface MusicSettings { navidromeUrl: string; navidromeUser: string; na
 export const ASSISTANT_DEFAULTS: AssistantSettings = {
   brain: "rules", router: "rules", ollamaUrl: "http://host.docker.internal:11434",
   ollamaModel: "llama3.2:3b", routerModel: "qwen2.5:1.5b", session: "", wakeWord: "hey harbor",
-  voice: { engine: "local", piperTr: "tr_TR-dfki-medium", piperEn: "en_US-ryan-high", kokoro: "af_heart", elevenVoice: "", elevenModel: "eleven_multilingual_v2" },
+  voice: { engine: "local", piperEn: "en_US-ryan-high", kokoro: "af_heart", elevenVoice: "", elevenModel: "eleven_multilingual_v2" },
 };
 
 const bad = (msg: string, code = 400) => Object.assign(new Error(msg), { statusCode: code });
@@ -103,26 +103,24 @@ export interface Reply {
   music?: { action: "play"; tracks: Track[]; label: string } | { action: "pause" | "resume" | "next" | "prev" | "louder" | "quieter" };
   show?: "bus" | "calendar";
 }
-interface Ctx { picks?: { line: string; to?: string; stop: string }[]; city?: string; calendar?: string; lang?: string }
+interface Ctx { picks?: { line: string; to?: string; stop: string }[]; city?: string; calendar?: string }
 
 /** Step 1: plain rules, English and Turkish. */
 export function rules(raw: string): Intent | null {
   const t = raw.toLowerCase().replace(/^(hey|hi|ok)\s+harbor[,.!\s]*/i, "").replace(/[?!.]+$/, "").trim();
   if (!t) return null;
-  if (/(?<!\p{L})(otob[uü]s|tramvay|troleybüs|bus|tram|trolleybus|departure|kalkış)/u.test(t)) return { kind: "bus" };
-  if (/(?<!\p{L})(takvim|ajanda|etkinlik|toplantı|calendar|agenda|schedule|meeting|events?)(?!\p{L})|bugün ne var|what'?s on/u.test(t)) return { kind: "calendar" };
-  if (/saat kaç|what time|the time/.test(t)) return { kind: "time" };
-  if (/(?<!\p{L})(pause|stop|durdur|dur)(?!\p{L})/u.test(t)) return { kind: "pause" };
-  if (/(?<!\p{L})(resume|continue|devam)(?!\p{L})/u.test(t)) return { kind: "resume" };
-  if (/(?<!\p{L})(next|skip|sonraki|geç|atla)(?!\p{L})/u.test(t)) return { kind: "next" };
-  if (/(?<!\p{L})(previous|back|önceki|geri)(?!\p{L})/u.test(t)) return { kind: "prev" };
-  if (/(?<!\p{L})(louder|volume up|turn it up|sesi (aç|yükselt|artır))(?!\p{L})/u.test(t)) return { kind: "volume", dir: 1 };
-  if (/(?<!\p{L})(quieter|volume down|turn it down|sesi (kıs|azalt))(?!\p{L})/u.test(t)) return { kind: "volume", dir: -1 };
-  let m = t.match(/^(?:play|put on)\s+(.*)$/);
-  if (m) return { kind: "play", query: m[1].replace(/^(some|me|music|songs?)\s*/g, "").replace(/^(music|songs?)$/, "").trim() };
-  m = t.match(/^(.*?)\s*(?:çal|aç|dinle|oynat)$/);
-  if (m && /(müzik|şarkı|çal|dinle|oynat)/.test(t)) return { kind: "play", query: m[1].replace(/(?<!\p{L})(bana|biraz|bir|müzik|müziği|şarkı|şarkısı|şarkılar[ıi]?|dan|den|tan|ten)(?!\p{L})/ug, "").replace(/['’]\S*/g, "").trim() };
-  if (/^(müzik|music)$/.test(t)) return { kind: "play", query: "" };
+  if (/\b(bus|tram|trolleybus|departures?)\b/.test(t)) return { kind: "bus" };
+  if (/\b(calendar|agenda|schedule|meetings?|events?)\b|what'?s on/.test(t)) return { kind: "calendar" };
+  if (/what time|the time/.test(t)) return { kind: "time" };
+  if (/\b(pause|stop)\b/.test(t)) return { kind: "pause" };
+  if (/\b(resume|continue|unpause)\b/.test(t)) return { kind: "resume" };
+  if (/\b(next|skip)\b/.test(t)) return { kind: "next" };
+  if (/\b(previous|go back)\b/.test(t)) return { kind: "prev" };
+  if (/\b(louder|volume up|turn it up)\b/.test(t)) return { kind: "volume", dir: 1 };
+  if (/\b(quieter|volume down|turn it down)\b/.test(t)) return { kind: "volume", dir: -1 };
+  const m = t.match(/^(?:play|put on)\s*(.*)$/);
+  if (m) return { kind: "play", query: m[1].replace(/^(some|me)\s+/, "").replace(/^(some\s+)?(music|songs?)$/, "").trim() };
+  if (/^(music|some music)$/.test(t)) return { kind: "play", query: "" };
   return null;
 }
 
@@ -148,7 +146,7 @@ async function route(text: string): Promise<Intent | null> {
   return null;
 }
 
-const VOICE = "You are Harbor, a voice assistant on a home tablet. Answer in one or two short spoken sentences, in the user's language. No markdown, no lists.";
+const VOICE = "You are Harbor, a voice assistant on a home tablet. Answer in one or two short spoken sentences. No markdown, no lists.";
 
 /** Step 3: the chosen brain answers whatever isn't a command. */
 async function brain(text: string, role = ""): Promise<Reply> {
@@ -171,11 +169,9 @@ async function brain(text: string, role = ""): Promise<Reply> {
   return { via: "rules", say: "I can play music, pause or skip, tell you the next bus or what's on your calendar. Pick a brain in Settings for anything else." };
 }
 
-const tr = (lang?: string) => /^tr/i.test(lang ?? "");
 const hhmm = (d: Date) => d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 async function act(intent: Intent, via: Reply["via"], ctx: Ctx, app: FastifyInstance, cookie?: string, role = ""): Promise<Reply> {
-  const T = tr(ctx.lang);
   const ask = async (url: string) => {
     const r = await app.inject({ method: "GET", url, headers: cookie ? { cookie } : {} });
     if (r.statusCode !== 200) throw bad(JSON.parse(r.body).error ?? "Failed", r.statusCode);
@@ -184,34 +180,34 @@ async function act(intent: Intent, via: Reply["via"], ctx: Ctx, app: FastifyInst
   switch (intent.kind) {
     case "play": {
       const tracks = intent.query ? await search(intent.query) : await shuffle();
-      if (!tracks.length) return { via, say: T ? `"${intent.query}" için bir şey bulamadım.` : `I couldn't find anything for "${intent.query}".` };
-      const label = intent.query ? (tracks[0].artist.toLowerCase().includes(intent.query.toLowerCase()) ? tracks[0].artist : intent.query) : (T ? "Karışık" : "Shuffle");
-      return { via, say: T ? `${label} çalıyor.` : `Playing ${label}.`, music: { action: "play", tracks, label } };
+      if (!tracks.length) return { via, say: `I couldn't find anything for "${intent.query}".` };
+      const label = intent.query ? (tracks[0].artist.toLowerCase().includes(intent.query.toLowerCase()) ? tracks[0].artist : intent.query) : "Shuffle";
+      return { via, say: `Playing ${label}.`, music: { action: "play", tracks, label } };
     }
     case "pause": case "resume": case "next": case "prev":
       return { via, say: "", music: { action: intent.kind } };
     case "volume":
       return { via, say: "", music: { action: intent.dir > 0 ? "louder" : "quieter" } };
     case "time":
-      return { via, say: (T ? "Saat " : "It's ") + hhmm(new Date()) + "." };
+      return { via, say: "It's " + hhmm(new Date()) + "." };
     case "bus": {
-      if (!ctx.picks?.length) return { via, say: T ? "Önce wall'a bir otobüs kartı ekle ve hattını seç." : "Add a bus tile to the wall and pick your line first." };
+      if (!ctx.picks?.length) return { via, say: "Add a bus tile to the wall and pick your line first." };
       const board: any[] = await ask(`/api/transit/board?city=${encodeURIComponent(ctx.city ?? "riga")}&limit=2&picks=${encodeURIComponent(JSON.stringify(ctx.picks))}`);
       const parts = board.filter((b) => b.departures?.length).map((b) => {
         const d = b.departures[0], n = b.line.replace(/^\D+/, "");
-        return T ? `${n} ${d.in} dakika sonra ${b.stop} durağından` : `the ${n} leaves ${b.stop} in ${d.in} minute${d.in === 1 ? "" : "s"}`;
+        return `the ${n} leaves ${b.stop} in ${d.in} minute${d.in === 1 ? "" : "s"}`;
       });
-      if (!parts.length) return { via, say: T ? "Önümüzdeki 3 saatte sefer yok." : "Nothing leaves in the next three hours.", show: "bus" };
-      return { via, say: T ? parts.join(", ") + "." : parts.join(", ").replace(/^t/, "T") + ".", show: "bus" };
+      if (!parts.length) return { via, say: "Nothing leaves in the next three hours.", show: "bus" };
+      return { via, say: parts.join(", ").replace(/^t/, "T") + ".", show: "bus" };
     }
     case "calendar": {
-      if (!ctx.calendar) return { via, say: T ? "Önce wall'a bir takvim kartı ekle." : "Add a calendar tile to the wall first." };
+      if (!ctx.calendar) return { via, say: "Add a calendar tile to the wall first." };
       const { events }: { events: { title: string; start: number; allDay: boolean }[] } = await ask(`/api/calendar?days=2&url=${encodeURIComponent(ctx.calendar)}`);
       const end = new Date(); end.setHours(23, 59, 59);
       const today = events.filter((e) => e.start <= end.getTime() && (e.allDay || e.start >= Date.now() - 30 * 60_000));
-      if (!today.length) return { via, say: T ? "Bugün takviminde başka bir şey yok." : "Nothing else on your calendar today.", show: "calendar" };
-      const list = today.slice(0, 3).map((e) => (e.allDay ? e.title : `${e.title} ${T ? "saat" : "at"} ${hhmm(new Date(e.start))}`));
-      return { via, say: (T ? "Bugün: " : "Today: ") + list.join(", ") + ".", show: "calendar" };
+      if (!today.length) return { via, say: "Nothing else on your calendar today.", show: "calendar" };
+      const list = today.slice(0, 3).map((e) => (e.allDay ? e.title : `${e.title} at ${hhmm(new Date(e.start))}`));
+      return { via, say: "Today: " + list.join(", ") + ".", show: "calendar" };
     }
     case "chat":
       return brain(intent.text, role);
@@ -227,7 +223,7 @@ export function assistant(): AssistantSettings {
 const PIPER = process.env.PIPER_URL ?? "http://127.0.0.1:5000";
 const KOKORO = process.env.KOKORO_URL ?? "http://127.0.0.1:8880";
 
-async function tts(engine: string, text: string, tr: boolean, v: VoiceSettings): Promise<{ type: string; body: Buffer }> {
+async function tts(engine: string, text: string, v: VoiceSettings): Promise<{ type: string; body: Buffer }> {
   const get = async (r: Response, name: string) => {
     if (!r.ok) throw bad(`${name} answered ${r.status}.`, 502);
     return { type: r.headers.get("content-type")?.startsWith("audio") ? r.headers.get("content-type")! : name === "Piper" ? "audio/wav" : "audio/mpeg", body: Buffer.from(await r.arrayBuffer()) };
@@ -235,7 +231,7 @@ async function tts(engine: string, text: string, tr: boolean, v: VoiceSettings):
   const post = (url: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(url, { method: "POST", signal: AbortSignal.timeout(30000), headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
   if (engine === "piper")
-    return get(await post(`${PIPER}/synthesize`, { text, voice: tr ? v.piperTr : v.piperEn }).catch(() => { throw bad("Piper isn't running.", 502); }), "Piper");
+    return get(await post(`${PIPER}/synthesize`, { text, voice: v.piperEn }).catch(() => { throw bad("Piper isn't running.", 502); }), "Piper");
   if (engine === "kokoro")
     return get(await post(`${KOKORO}/v1/audio/speech`, { model: "kokoro", input: text, voice: v.kokoro, response_format: "mp3" }).catch(() => { throw bad("Kokoro isn't running.", 502); }), "Kokoro");
   if (engine === "elevenlabs") {
@@ -247,9 +243,8 @@ async function tts(engine: string, text: string, tr: boolean, v: VoiceSettings):
 }
 
 /** Which engine speaks this sentence, and what to try if it's down. */
-function engines(v: VoiceSettings, tr: boolean): string[] {
-  if (v.engine === "local") return tr ? ["piper"] : ["kokoro", "piper"];
-  if (v.engine === "kokoro" && tr) return ["piper"]; // Kokoro can't speak Turkish
+function engines(v: VoiceSettings): string[] {
+  if (v.engine === "local") return ["kokoro", "piper"];
   return [v.engine];
 }
 
@@ -269,14 +264,14 @@ export async function registerAssistant(app: FastifyInstance) {
 
   // Spoken answers. The tablet falls back to its own voice if this fails.
   app.post("/api/assistant/speak", async (req, reply) => {
-    const { text = "", lang = "" } = (req.body ?? {}) as { text?: string; lang?: string };
+    const { text = "" } = (req.body ?? {}) as { text?: string };
     const said = String(text).slice(0, 600).trim();
     if (!said) throw bad("Nothing to say.");
-    const v = assistant().voice, tr = /^tr/i.test(lang);
+    const v = assistant().voice;
     if (v.engine === "browser") throw bad("This voice plays in the browser.");
     let last: unknown;
-    for (const e of engines(v, tr)) {
-      try { const a = await tts(e, said, tr, v); return reply.header("content-type", a.type).header("x-voice", e).send(a.body); }
+    for (const e of engines(v)) {
+      try { const a = await tts(e, said, v); return reply.header("content-type", a.type).header("x-voice", e).send(a.body); }
       catch (err) { last = err; }
     }
     throw last;
