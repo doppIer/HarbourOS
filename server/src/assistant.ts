@@ -143,7 +143,7 @@ async function route(text: string): Promise<Intent | null> {
 const VOICE = "You are Harbor, a voice assistant on a home tablet. Answer in one or two short spoken sentences, in the user's language. No markdown, no lists.";
 
 /** Step 3: the chosen brain answers whatever isn't a command. */
-async function brain(text: string): Promise<Reply> {
+async function brain(text: string, role = ""): Promise<Reply> {
   const a = assistant();
   if (a.brain === "ollama") return { via: "ollama", say: (await ollama(text, a.ollamaModel, VOICE)).trim() };
   if (a.brain === "claude") {
@@ -152,6 +152,8 @@ async function brain(text: string): Promise<Reply> {
     return { via: "claude", say: m.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim() };
   }
   if (a.brain === "session") {
+    // A terminal session can run anything on the server: only admins and the tablets they paired may type into it.
+    if (role !== "admin" && role !== "device") return { via: "session", say: "Only an admin can talk to the AI session." };
     if (!a.session) throw bad("Pick a session in Settings → Assistant.");
     if (demo) return { via: "session", say: `Sent to ${a.session}. Open the AI page to follow it.` };
     const r = await hostExec(`tmux send-keys -t ${q(a.session)} -l ${q(text)} && tmux send-keys -t ${q(a.session)} Enter`);
@@ -164,7 +166,7 @@ async function brain(text: string): Promise<Reply> {
 const tr = (lang?: string) => /^tr/i.test(lang ?? "");
 const hhmm = (d: Date) => d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
-async function act(intent: Intent, via: Reply["via"], ctx: Ctx, app: FastifyInstance, cookie?: string): Promise<Reply> {
+async function act(intent: Intent, via: Reply["via"], ctx: Ctx, app: FastifyInstance, cookie?: string, role = ""): Promise<Reply> {
   const T = tr(ctx.lang);
   const ask = async (url: string) => {
     const r = await app.inject({ method: "GET", url, headers: cookie ? { cookie } : {} });
@@ -204,7 +206,7 @@ async function act(intent: Intent, via: Reply["via"], ctx: Ctx, app: FastifyInst
       return { via, say: (T ? "Bugün: " : "Today: ") + list.join(", ") + ".", show: "calendar" };
     }
     case "chat":
-      return brain(intent.text);
+      return brain(intent.text, role);
   }
 }
 
@@ -223,7 +225,7 @@ export async function registerAssistant(app: FastifyInstance) {
       intent = await route(said).catch(() => null);
       if (intent) via = "router";
     }
-    return act(intent ?? { kind: "chat", text: said }, via, ctx, app, cookie);
+    return act(intent ?? { kind: "chat", text: said }, via, ctx, app, cookie, req.user?.role);
   });
 
   // The settings screen asks which sessions and models exist.

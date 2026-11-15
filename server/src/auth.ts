@@ -54,9 +54,6 @@ function memberAllowed(method: string, url: string, role: string): boolean {
   if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather" || p === "/api/calendar" || p.startsWith("/api/transit/") || p.startsWith("/api/music/"))) return true;
   if (method === "POST" && p === "/api/assistant") return true;
   if (method === "PUT" && p === "/api/wall/profile") return true;
-  // Voice assistant and music (the session brain checks for admin itself).
-  if (method === "POST" && p === "/api/assistant") return true;
-  if (method === "GET" && (p.startsWith("/api/music/") || p === "/api/assistant/config")) return true;
   if (role === "device") return (method === "GET" && ["/ws", "/api/apps", "/api/containers", "/api/settings", "/api/widgets"].includes(p))
     || (method === "POST" && /^\/api\/apps\/[^/]+\/(open|activity)$/.test(p));
   if (method === "GET") {
