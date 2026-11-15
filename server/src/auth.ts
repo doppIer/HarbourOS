@@ -51,7 +51,7 @@ function startSession(reply: FastifyReply, user: User) {
 function memberAllowed(method: string, url: string, role: string): boolean {
   const p = url.split("?")[0];
   // Wall screen: members and paired tablets.
-  if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather")) return true;
+  if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather" || p === "/api/calendar" || p.startsWith("/api/transit/"))) return true;
   if (method === "PUT" && p === "/api/wall/profile") return true;
   if (role === "device") return (method === "GET" && ["/ws", "/api/apps", "/api/containers", "/api/settings", "/api/widgets"].includes(p))
     || (method === "POST" && /^\/api\/apps\/[^/]+\/(open|activity)$/.test(p));

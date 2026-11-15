@@ -244,9 +244,9 @@ function Sheet({ title, close, children }: { title: string; close: () => void; c
 
 const PRETTY: Record<string, string> = {
   clock: "Clock", weather: "Weather", "system-summary": "System", "system-area": "System load chart", cpu: "CPU", memory: "Memory",
-  power: "Power", temp: "Temperature", network: "Network", disks: "Disks", savings: "Savings", load: "Load", "containers-summary": "Containers",
+  power: "Power", temp: "Temperature", bus: "Bus departures", calendar: "Calendar", network: "Network", disks: "Disks", savings: "Savings", load: "Load", "containers-summary": "Containers",
 };
-const DEFAULT_SIZE: Record<string, Size> = { clock: "w", weather: "m", "system-summary": "m", "system-area": "l", "containers-summary": "tall" };
+const DEFAULT_SIZE: Record<string, Size> = { clock: "w", weather: "m", "system-summary": "m", "system-area": "l", "containers-summary": "tall", bus: "m", calendar: "tall" };
 
 function AddSheet({ close, add }: { close: () => void; add: (i: LayoutItem) => void }) {
   const [list, setList] = useState<string[]>([]);
@@ -276,6 +276,19 @@ const OPTIONS: Record<string, (o: Record<string, string>, set: (o: Record<string
       {apps.value.map((a) => <button key={a.id} class={`btn wall-btn ${o.app === a.id ? "primary" : ""}`} onClick={() => set({ ...o, app: a.id })}><Icon name={a.icon} size={20} />{a.name}</button>)}
     </div>
   ),
+  bus: (o, set) => <BusOptions o={o} set={set} />,
+  calendar: (o, set) => (
+    <>
+      <label class="field">Calendar share link
+        <input class="input" placeholder="webcal://p123-caldav.icloud.com/published/2/…" value={o.url ?? ""} onChange={(e) => set({ ...o, url: e.currentTarget.value.trim() })} />
+      </label>
+      <div class="dim" style={{ fontSize: 12.5 }}>On a Mac: Calendar → right-click the calendar → Share Calendar… → tick Public Calendar → copy the link. On iPhone: Calendar → Calendars → (i) → Public Calendar → Share Link.</div>
+      <div class="wall-row">Show the next
+        <select class="input" value={o.days ?? "7"} onChange={(e) => set({ ...o, days: e.currentTarget.value })}>
+          {["1", "3", "7", "14", "31"].map((d) => <option key={d} value={d}>{d === "1" ? "day" : `${d} days`}</option>)}
+        </select></div>
+    </>
+  ),
   clock: (o, set) => (
     <>
       <label class="check"><input type="checkbox" checked={o.seconds === "1"} onChange={(e) => set({ ...o, seconds: e.currentTarget.checked ? "1" : "" })} />Show seconds</label>
@@ -283,6 +296,58 @@ const OPTIONS: Record<string, (o: Record<string, string>, set: (o: Record<string
     </>
   ),
 };
+
+function BusOptions({ o, set }: { o: Record<string, string>; set: (o: Record<string, string>) => void }) {
+  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+  const [q, setQ] = useState(o.stop ?? "");
+  const [found, setFound] = useState<{ name: string; lines: string[] }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const custom = o.city === "custom";
+  const src = custom ? o.gtfs ?? "" : o.city || "riga";
+  useEffect(() => { api<{ id: string; name: string }[]>("/api/transit/cities").then(setCities).catch(() => {}); }, []);
+  useEffect(() => {
+    if (q.trim().length < 2 || !src) { setFound([]); return; }
+    const t = setTimeout(() => {
+      setBusy(true); setErr("");
+      api<{ name: string; lines: string[] }[]>(`/api/transit/stops?${new URLSearchParams({ city: src, q })}`)
+        .then(setFound).catch((e) => setErr(e.message)).finally(() => setBusy(false));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [q, src]);
+  const stop = found.find((f) => f.name === o.stop);
+  const chosen = new Set((o.lines ?? "").split(",").filter(Boolean));
+  const toggle = (l: string) => { const n = new Set(chosen); n.has(l) ? n.delete(l) : n.add(l); set({ ...o, lines: [...n].join(",") }); };
+  return (
+    <>
+      <label class="field">City
+        <select class="input" value={o.city || "riga"} onChange={(e) => set({ ...o, city: e.currentTarget.value, stop: "", lines: "" })}>
+          {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          <option value="custom">Another city (GTFS link)…</option>
+        </select>
+      </label>
+      {custom && <label class="field">GTFS timetable link (.zip)
+        <input class="input" placeholder="https://…/gtfs.zip" value={o.gtfs ?? ""} onChange={(e) => set({ ...o, gtfs: e.currentTarget.value.trim(), stop: "", lines: "" })} />
+        <span class="dim" style={{ fontSize: 12 }}>Most cities publish one; search "&lt;city&gt; GTFS" or look on transit.land.</span>
+      </label>}
+      <label class="field">Stop
+        <input class="input" placeholder="Start typing a stop name" value={q} onInput={(e) => setQ(e.currentTarget.value)} />
+      </label>
+      {busy && <div class="dim">Searching… (the first search downloads the timetable, a few seconds)</div>}
+      {err && <div class="err-text">{err}</div>}
+      <div class="wall-choices">
+        {found.map((f) => <button key={f.name} class={`btn wall-btn ${o.stop === f.name ? "primary" : ""}`} onClick={() => { setQ(f.name); set({ ...o, stop: f.name, lines: "" }); }}>{f.name}</button>)}
+      </div>
+      {o.stop && (stop ?? found[0]) && <>
+        <div class="wall-row">Lines at {o.stop} (none ticked = all)</div>
+        <div class="wall-choices">
+          {(stop ?? { lines: [] }).lines.map((l) => <button key={l} class={`btn ${chosen.has(l) ? "primary" : ""}`} style={{ minWidth: 48 }} onClick={() => toggle(l)}>{l}</button>)}
+        </div>
+      </>}
+      {o.stop && <div class="dim" style={{ fontSize: 12.5 }}>Showing: {o.stop}{chosen.size ? ` · lines ${[...chosen].join(", ")}` : " · all lines"}</div>}
+    </>
+  );
+}
 
 function OptionsSheet({ item, close, onChange }: { item: LayoutItem; close: () => void; onChange: (o: Record<string, string>) => void }) {
   const [o, setO] = useState(item.opts ?? {});
