@@ -294,6 +294,10 @@ The old `http://<tailscale-ip>:7080` keeps working. On the https address, apps t
 3. Keeping the screen on needs HarbourOS over https. With Tailscale: `sudo tailscale serve --bg 7080`, then use `https://<machine>.<tailnet>.ts.net/wall`. On Android, a kiosk browser (e.g. Fully Kiosk) can keep the screen on instead.
 
 
+## Now playing on the wall
+
+If the server drives a speaker with **shairport-sync** (AirPlay) or **raspotify** (Spotify Connect), the wall shows what your phone is playing there, full screen with the cover, and puts it away when the music stops. On the server, in the HarbourOS folder: `sudo bash host/setup-nowplaying.sh` (`... off` removes it). It turns on shairport's metadata pipe, adds a librespot event hook, and both report to HarbourOS with a private token from `data/nowplaying.token`.
+
 ## Credits
 
 ASCII animal backgrounds: [ascii-animals](https://github.com/DesignerStephen1/ascii-animals) by DesignerStephen1 (MIT).

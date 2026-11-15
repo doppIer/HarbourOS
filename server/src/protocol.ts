@@ -94,4 +94,5 @@ export type ServerMsg =
   | { t: "boot"; d: BootEvent }
   | { t: "log"; id: string; line: string }
   | { t: "widgets"; changed: string[] }
-  | { t: "store"; d: StoreJob };
+  | { t: "store"; d: StoreJob }
+  | { t: "nowplaying"; d: import("./nowplaying.js").NowPlaying | null };

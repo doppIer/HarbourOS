@@ -11,6 +11,7 @@ import { appSrc } from "../shell/AppHost";
 import { BackgroundLayer, ASCII_CREDIT } from "../shell/Background";
 import { DJ } from "./DJ";
 import { NowPlaying, current as nowTrack } from "./player";
+import { Stage, useStage, watchNowPlaying, np } from "./Stage";
 
 export interface Screen {
   dim: { on: boolean; from: string; to: string; level: number };
@@ -54,6 +55,8 @@ export function Wall() {
   const [sheet, setSheet] = useState<null | "add" | "screen" | "layouts" | { opts: number }>(null);
   const [open, setOpen] = useState<App | null>(null);
   const [section, setSection] = useState<"tiles" | "dj">("tiles");
+  useEffect(watchNowPlaying, []);
+  const stage = useStage();
 
   useEffect(() => { api<Profile>("/api/wall/profile").then(setP).catch((e) => setErr(e.message)); }, []);
   const save = (n: Profile) => { setP(n); api("/api/wall/profile", { method: "PUT", json: { layout: n.layout, screen: n.screen, look: n.look, custom: n.custom } }).catch((e) => setErr(e.message)); };
@@ -136,6 +139,12 @@ export function Wall() {
       </div>
 
       {section !== "dj" && <NowPlaying onOpen={() => setSection("dj")} />}
+      {!stage.open && np.value?.state === "playing" && np.value.title && !nowTrack.value && (
+        <button class="np-mini" onClick={stage.show} aria-label="Show what's playing">
+          <span class="np-eq"><i /><i /><i /></span>{np.value.title}<span class="dim"> · {np.value.artist}</span>
+        </button>
+      )}
+      <Stage open={stage.open} onClose={stage.dismiss} />
 
       {open && (
         <div class="wall-app">
@@ -152,8 +161,8 @@ export function Wall() {
           onChange={(opts) => { const l = [...p.layout]; l[sheet.opts] = { ...l[sheet.opts], opts }; setLayout(l); }} />
       )}
 
-      {fx.dim > 0 && <div class="wall-dim" style={{ opacity: fx.dim / 100, pointerEvents: p.screen.wake.on ? "auto" : "none" }} />}
-      {fx.saver && <Saver style={p.screen.saver.style} />}
+      {fx.dim > 0 && !stage.open && <div class="wall-dim" style={{ opacity: fx.dim / 100, pointerEvents: p.screen.wake.on ? "auto" : "none" }} />}
+      {fx.saver && !stage.open && <Saver style={p.screen.saver.style} />}
     </div>
   );
 }
@@ -221,6 +230,15 @@ function useScreen(s?: Screen) {
   const [wakeLock, setWakeLock] = useState<"on" | "off" | "unsupported">("off");
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 15_000); return () => clearInterval(t); }, []);
+
+  // Opening the wall counts as a touch: no dimmed screen right away at night.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!s || opened.current) return;
+    opened.current = true;
+    awakeUntil.current = Date.now() + Math.max(60, s.wake.seconds) * 1000;
+    setNow(Date.now());
+  }, [s]);
 
   // Burn-in protection: nudge everything a few pixels now and then.
   useEffect(() => {

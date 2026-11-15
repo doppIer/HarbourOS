@@ -11,6 +11,7 @@ import { registerRoutes } from "./routes.js";
 import { registerWall } from "./wall.js";
 import { registerTransit } from "./transit.js";
 import { registerMusic } from "./music.js";
+import { registerNowPlaying } from "./nowplaying.js";
 import { startCollector } from "./collectors/scheduler.js";
 import { startContainerWatch } from "./docker/containers.js";
 import { publishApps, startIdleWatcher, startOnBoot } from "./lifecycle/apps.js";
@@ -29,6 +30,7 @@ await registerRoutes(app);
 await registerWall(app);
 await registerTransit(app);
 await registerMusic(app);
+await registerNowPlaying(app);
 
 if (fs.existsSync(env.publicDir)) {
   await app.register(fastifyStatic, {

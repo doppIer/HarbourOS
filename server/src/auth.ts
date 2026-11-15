@@ -51,7 +51,7 @@ function startSession(reply: FastifyReply, user: User) {
 function memberAllowed(method: string, url: string, role: string): boolean {
   const p = url.split("?")[0];
   // Wall screen: members and paired tablets.
-  if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather" || p === "/api/calendar" || p.startsWith("/api/transit/") || p.startsWith("/api/music/"))) return true;
+  if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather" || p === "/api/calendar" || p.startsWith("/api/transit/") || p.startsWith("/api/music/") || p.startsWith("/api/nowplaying"))) return true;
   if (method === "PUT" && p === "/api/wall/profile") return true;
   if (role === "device") return (method === "GET" && ["/ws", "/api/apps", "/api/containers", "/api/settings", "/api/widgets"].includes(p))
     || (method === "POST" && /^\/api\/apps\/[^/]+\/(open|activity)$/.test(p));
@@ -64,7 +64,7 @@ function memberAllowed(method: string, url: string, role: string): boolean {
   return false;
 }
 
-const PUBLIC = new Set(["/api/devices/pair", "/api/login", "/api/signup", "/api/me", "/api/auth/config", "/api/logout", "/api/password/forgot", "/api/password/reset"]);
+const PUBLIC = new Set(["/api/devices/pair", "/api/login", "/api/signup", "/api/me", "/api/auth/config", "/api/logout", "/api/password/forgot", "/api/password/reset", "/api/nowplaying/push"]); // push checks its own token
 
 export async function registerAuth(app: FastifyInstance) {
   // Bootstrap: an admin from HARBOR_PASSWORD on a fresh install (optional).

@@ -11,7 +11,7 @@ const listeners: (() => void)[] = [];
 
 export const hub = {
   add(ws: WebSocket) {
-    const c: Client = { ws, topics: new Set(["stats", "containers", "apps", "boot", "widgets", "store"]), visible: true, viewing: null };
+    const c: Client = { ws, topics: new Set(["stats", "containers", "apps", "boot", "widgets", "store", "nowplaying"]), visible: true, viewing: null };
     clients.add(c);
     ws.on("message", (raw) => {
       let m: ClientMsg;
