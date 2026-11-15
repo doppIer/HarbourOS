@@ -59,7 +59,16 @@ export function Wall() {
   return (
     <div class={`wall ${p.look.theme}`} style={{ "--glass": p.look.glass / 100 } as any} onPointerDownCapture={fx.touch}>
       {p.look.background !== "none" && <BackgroundLayer module={p.look.background} theme={p.look.theme} paused={!!open || fx.dim > 0 || fx.saver} />}
+      <nav class="wall-rail" aria-label="Wall">
+        {me.value?.role !== "device" && <a class="wall-rail-btn" href="/" aria-label="Back to the desktop" title="Desktop"><Icon name="solar:home-2-linear" size={24} /></a>}
+        <button class={`wall-rail-btn ${editing ? "on" : ""}`} aria-label="Edit tiles" title="Edit tiles" onClick={() => setEditing(!editing)}><Icon name="solar:pen-2-linear" size={22} /></button>
+        <button class="wall-rail-btn" aria-label="Add tile" title="Add tile" onClick={() => { setEditing(true); setSheet("add"); }}><Icon name="solar:widget-add-linear" size={22} /></button>
+        <button class="wall-rail-btn" aria-label="Full screen" title="Full screen" onClick={() => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {})}><Icon name="solar:maximize-square-linear" size={22} /></button>
+        <span style={{ flex: 1 }} />
+        <button class="wall-rail-btn" aria-label="Screen settings" title="Screen" onClick={() => setSheet("screen")}><Icon name="solar:settings-linear" size={22} /></button>
+      </nav>
       <div class="wall-inner" style={{ transform: fx.shift }}>
+        <WallHeader />
         {editing && (
           <div class="wall-bar">
             <span style={{ fontWeight: 600 }}>Editing {p.name}</span>
@@ -105,6 +114,35 @@ export function Wall() {
       {fx.dim > 0 && <div class="wall-dim" style={{ opacity: fx.dim / 100, pointerEvents: p.screen.wake.on ? "auto" : "none" }} />}
       {fx.saver && <Saver style={p.screen.saver.style} />}
     </div>
+  );
+}
+
+// ---------- header: weather strip, greeting, clock ----------
+function WallHeader() {
+  const [now, setNow] = useState(new Date());
+  const [wx, setWx] = useState<any>(null);
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 15_000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    const load = () => api<any>("/api/weather").then(setWx).catch(() => {});
+    load(); const t = setInterval(load, 10 * 60_000); return () => clearInterval(t);
+  }, []);
+  const h = now.getHours();
+  const part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const name = me.value?.role === "device" ? "" : (me.value?.name ?? "").split(" ")[0];
+  const c = wx?.current;
+  return (
+    <header class="wall-head">
+      <div class="wall-strip">
+        {c ? <>
+          <span><Icon name="solar:temperature-linear" size={16} />{Math.round(c.temperature_2m)}°C</span>
+          <span><Icon name="solar:waterdrops-linear" size={16} />{c.relative_humidity_2m}%</span>
+          <span><Icon name="solar:wind-linear" size={16} />{Math.round(c.wind_speed_10m)} km/h</span>
+          <span class="dim">{wx.place?.name?.split(",")[0]}</span>
+        </> : <span />}
+        <span class="wall-strip-time">{now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })} · {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+      </div>
+      <h1 class="wall-greet">{part}{name ? `, ${name}` : ""}.<br /><span>Have a great day.</span></h1>
+    </header>
   );
 }
 

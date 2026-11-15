@@ -378,3 +378,29 @@ a.it, a.btn { text-decoration: none; }
 .wall.light .wall-edit .iconbtn, .wall.light .wall-edit .btn { background: #fff; }
 .wall.light .wall-bar { background: rgba(255,255,255,.8); }
 .seg { display: inline-flex; gap: 4px; }
+
+/* Wall: soft smart-home look. Side rail, greeting header, rounded glass cards. */
+.wall-rail { position: absolute; z-index: 3; left: 0; top: 0; bottom: 0; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: max(20px, env(safe-area-inset-top)) 0 max(20px, env(safe-area-inset-bottom)); background: rgb(15 16 17 / calc(var(--glass, .55) + .15));
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-right: 1px solid var(--line); border-radius: 0 28px 28px 0; }
+.wall-rail-btn { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; color: var(--t3); background: none; border: 0; cursor: pointer; }
+.wall-rail-btn:hover, .wall-rail-btn.on { color: var(--t1); background: var(--active); }
+.wall .wall-inner { left: 76px; padding-left: 24px; padding-right: 24px; }
+.wall-head { margin: 4px 0 22px; }
+.wall-strip { display: flex; align-items: center; gap: 20px; font-size: 14px; color: var(--t2); flex-wrap: wrap; }
+.wall-strip span { display: inline-flex; align-items: center; gap: 6px; }
+.wall-strip-time { margin-left: auto; font-variant-numeric: tabular-nums; }
+.wall-greet { margin: 26px 0 0; font-size: clamp(30px, 4.4vw, 46px); font-weight: 400; line-height: 1.15; letter-spacing: -0.02em; color: var(--t1); }
+.wall-greet span { color: var(--t3); }
+.wall-grid { gap: 16px; }
+.wall-cell > .tile { border-radius: 24px; padding: 20px 22px; }
+.wall-cell > .tile [style*="border: 1px solid"] { border-radius: 14px; }
+.wall-edit .iconbtn, .wall-edit .btn { border-radius: 14px; }
+.wall-bar { border-radius: 20px; }
+.wall.light .wall-rail { background: rgb(255 255 255 / calc(var(--glass, .55) + .2)); }
+.wall.light .wall-cell > .tile { box-shadow: 0 8px 30px rgba(20,30,50,.08); border-color: rgba(255,255,255,.7); }
+@media (max-width: 700px) {
+  .wall-rail { top: auto; width: auto; height: 68px; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom)); flex-direction: row; justify-content: space-around; padding: 0 8px; border-radius: 24px; border: 1px solid var(--line); }
+  .wall-rail > span { display: none; }
+  .wall .wall-inner { left: 0; padding-bottom: 96px; }
+}
