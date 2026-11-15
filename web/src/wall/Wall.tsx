@@ -297,54 +297,84 @@ const OPTIONS: Record<string, (o: Record<string, string>, set: (o: Record<string
   ),
 };
 
+interface Pick { line: string; to: string; stop: string }
+interface Line { id: string; kind: string; short: string; name: string; color: string }
 function BusOptions({ o, set }: { o: Record<string, string>; set: (o: Record<string, string>) => void }) {
   const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
-  const [q, setQ] = useState(o.stop ?? "");
-  const [found, setFound] = useState<{ name: string; lines: string[] }[]>([]);
+  const [lines, setLines] = useState<Line[]>([]);
+  const [kind, setKind] = useState("bus");
+  const [line, setLine] = useState<Line | null>(null);
+  const [dirs, setDirs] = useState<{ to: string; stops: string[] }[]>([]);
+  const [dir, setDir] = useState<{ to: string; stops: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const custom = o.city === "custom";
   const src = custom ? o.gtfs ?? "" : o.city || "riga";
+  let picks: Pick[] = [];
+  try { picks = JSON.parse(o.picks || "[]"); } catch {}
+  const savePicks = (p: Pick[]) => set({ ...o, picks: JSON.stringify(p), stop: "", lines: "" });
+
   useEffect(() => { api<{ id: string; name: string }[]>("/api/transit/cities").then(setCities).catch(() => {}); }, []);
   useEffect(() => {
-    if (q.trim().length < 2 || !src) { setFound([]); return; }
-    const t = setTimeout(() => {
-      setBusy(true); setErr("");
-      api<{ name: string; lines: string[] }[]>(`/api/transit/stops?${new URLSearchParams({ city: src, q })}`)
-        .then(setFound).catch((e) => setErr(e.message)).finally(() => setBusy(false));
-    }, 350);
-    return () => clearTimeout(t);
-  }, [q, src]);
-  const stop = found.find((f) => f.name === o.stop);
-  const chosen = new Set((o.lines ?? "").split(",").filter(Boolean));
-  const toggle = (l: string) => { const n = new Set(chosen); n.has(l) ? n.delete(l) : n.add(l); set({ ...o, lines: [...n].join(",") }); };
+    if (!src) return;
+    setBusy(true); setErr(""); setLine(null);
+    api<Line[]>(`/api/transit/lines?${new URLSearchParams({ city: src })}`).then(setLines).catch((e) => setErr(e.message)).finally(() => setBusy(false));
+  }, [src]);
+  useEffect(() => {
+    setDirs([]); setDir(null);
+    if (!line) return;
+    api<{ to: string; stops: string[] }[]>(`/api/transit/line?${new URLSearchParams({ city: src, line: line.id })}`).then(setDirs).catch((e) => setErr(e.message));
+  }, [line]);
+  const kinds = [...new Set(lines.map((l) => l.kind))];
+  const add = (stop: string) => { savePicks([...picks, { line: line!.id, to: dir!.to, stop }]); setLine(null); };
+
   return (
     <>
       <label class="field">City
-        <select class="input" value={o.city || "riga"} onChange={(e) => set({ ...o, city: e.currentTarget.value, stop: "", lines: "" })}>
+        <select class="input" value={o.city || "riga"} onChange={(e) => set({ ...o, city: e.currentTarget.value, picks: "[]" })}>
           {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           <option value="custom">Another city (GTFS link)…</option>
         </select>
       </label>
       {custom && <label class="field">GTFS timetable link (.zip)
-        <input class="input" placeholder="https://…/gtfs.zip" value={o.gtfs ?? ""} onChange={(e) => set({ ...o, gtfs: e.currentTarget.value.trim(), stop: "", lines: "" })} />
-        <span class="dim" style={{ fontSize: 12 }}>Most cities publish one; search "&lt;city&gt; GTFS" or look on transit.land.</span>
+        <input class="input" placeholder="https://…/gtfs.zip" value={o.gtfs ?? ""} onChange={(e) => set({ ...o, gtfs: e.currentTarget.value.trim(), picks: "[]" })} />
       </label>}
-      <label class="field">Stop
-        <input class="input" placeholder="Start typing a stop name" value={q} onInput={(e) => setQ(e.currentTarget.value)} />
-      </label>
-      {busy && <div class="dim">Searching… (the first search downloads the timetable, a few seconds)</div>}
+
+      <div class="wall-group">
+        <b>On this tile</b>
+        {!picks.length && <div class="dim">Nothing yet. Add a line below.</div>}
+        {picks.map((p, i) => (
+          <div key={i} class="wall-row">
+            <span class="tag">{p.line}</span> → {p.to} <span class="dim">from {p.stop}</span>
+            <button class="iconbtn" style={{ marginLeft: "auto" }} aria-label="Remove" onClick={() => savePicks(picks.filter((_, j) => j !== i))}><Icon name="solar:trash-bin-trash-linear" size={16} /></button>
+          </div>
+        ))}
+      </div>
+
+      <b>Add a line</b>
+      {busy && <div class="dim">Loading the timetable… (the first time takes a few seconds)</div>}
       {err && <div class="err-text">{err}</div>}
       <div class="wall-choices">
-        {found.map((f) => <button key={f.name} class={`btn wall-btn ${o.stop === f.name ? "primary" : ""}`} onClick={() => { setQ(f.name); set({ ...o, stop: f.name, lines: "" }); }}>{f.name}</button>)}
+        {kinds.map((k) => <button key={k} class={`btn wall-btn ${kind === k ? "primary" : ""}`} onClick={() => { setKind(k); setLine(null); }}>{k[0].toUpperCase() + k.slice(1)}</button>)}
       </div>
-      {o.stop && (stop ?? found[0]) && <>
-        <div class="wall-row">Lines at {o.stop} (none ticked = all)</div>
+      {!line && <div class="wall-choices">
+        {lines.filter((l) => l.kind === kind).map((l) => (
+          <button key={l.id} class="btn" title={l.name} style={{ minWidth: 52, height: 40, justifyContent: "center", background: l.color || undefined, color: l.color ? "#fff" : undefined, borderColor: "transparent", fontWeight: 600 }} onClick={() => setLine(l)}>{l.short}</button>
+        ))}
+      </div>}
+      {line && <>
+        <div class="wall-row"><span class="tag">{line.id}</span> {line.name} <button class="btn" style={{ marginLeft: "auto" }} onClick={() => setLine(null)}>Change</button></div>
+        <div class="dim">Which way?</div>
         <div class="wall-choices">
-          {(stop ?? { lines: [] }).lines.map((l) => <button key={l} class={`btn ${chosen.has(l) ? "primary" : ""}`} style={{ minWidth: 48 }} onClick={() => toggle(l)}>{l}</button>)}
+          {dirs.map((d) => <button key={d.to} class={`btn wall-btn ${dir?.to === d.to ? "primary" : ""}`} onClick={() => setDir(d)}>→ {d.to}</button>)}
         </div>
+        {dir && <>
+          <div class="dim">Your stop:</div>
+          <div class="wall-choices" style={{ maxHeight: 260, overflow: "auto" }}>
+            {dir.stops.slice(0, -1).map((s, i) => <button key={s + i} class="btn" onClick={() => add(s)}>{s}</button>)}
+          </div>
+        </>}
       </>}
-      {o.stop && <div class="dim" style={{ fontSize: 12.5 }}>Showing: {o.stop}{chosen.size ? ` · lines ${[...chosen].join(", ")}` : " · all lines"}</div>}
     </>
   );
 }

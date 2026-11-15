@@ -73,11 +73,11 @@ export const CITIES: City[] = [
 interface Feed {
   at: number;
   tz: string;
-  routes: Map<string, { short: string; type: number; color: string }>;
+  routes: Map<string, { short: string; type: number; color: string; long: string }>;
   stops: Map<string, string>;                 // stop_id -> name
   byName: Map<string, string[]>;              // lowercased name -> stop_ids
   trips: Map<string, { route: string; service: string; head: string }>;
-  times: Map<string, { trip: string; t: number }[]>; // stop_id -> departures (seconds after midnight)
+  times: Map<string, { trip: string; t: number; seq: number }[]>; // stop_id -> departures (seconds after midnight)
   weekly: Map<string, { days: boolean[]; from: string; to: string }>;
   exceptions: Map<string, Map<string, number>>; // service -> yyyymmdd -> 1 add / 2 remove
 }
@@ -124,7 +124,7 @@ async function load(key: string): Promise<Feed> {
 
   const agency = csv(txt("agency.txt")).next().value;
   const fd: Feed = { at: Date.now(), tz: city?.tz ?? agency?.agency_timezone ?? "UTC", routes: new Map(), stops: new Map(), byName: new Map(), trips: new Map(), times: new Map(), weekly: new Map(), exceptions: new Map() };
-  for (const r of csv(txt("routes.txt"))) fd.routes.set(r.route_id, { short: r.route_short_name || r.route_long_name, type: Number(r.route_type), color: r.route_color });
+  for (const r of csv(txt("routes.txt"))) fd.routes.set(r.route_id, { short: r.route_short_name || r.route_long_name, type: Number(r.route_type), color: r.route_color, long: r.route_long_name });
   for (const s of csv(txt("stops.txt"))) {
     fd.stops.set(s.stop_id, s.stop_name);
     const k = s.stop_name.toLowerCase();
@@ -135,7 +135,7 @@ async function load(key: string): Promise<Feed> {
     const [h, m, s] = (st.departure_time || st.arrival_time).split(":").map(Number);
     if (!Number.isFinite(h)) continue;
     const l = fd.times.get(st.stop_id) ?? [];
-    l.push({ trip: st.trip_id, t: h * 3600 + m * 60 + (s || 0) });
+    l.push({ trip: st.trip_id, t: h * 3600 + m * 60 + (s || 0), seq: Number(st.stop_sequence) });
     fd.times.set(st.stop_id, l);
   }
   const D = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -162,6 +162,32 @@ function runs(fd: Feed, service: string, ymd: string, wd: number) {
   if (ex === 2) return false;
   const w = fd.weekly.get(service);
   return !!w && w.days[wd] && ymd >= w.from && ymd <= w.to;
+}
+
+const lineId = (r: { type: number; short: string }) => `${KIND[r.type] ?? "bus"} ${r.short}`;
+const stopName = (fd: Feed, name: string) => fd.stops.get(fd.byName.get(name.toLowerCase())?.[0] ?? "") ?? name;
+
+/** Next departures (3 hours) from every platform with this stop name, filtered by line/trip. */
+function departures(fd: Feed, stop: string, keep: (r: { type: number; short: string; color: string }, t: { head: string }) => boolean) {
+  const ids = fd.byName.get(stop.toLowerCase());
+  if (!ids) throw bad(`No stop called "${stop}" in this timetable.`, 404);
+  const now = new Date();
+  const today = localNow(fd.tz, now), yest = localNow(fd.tz, new Date(now.getTime() - 86400_000));
+  const out: { line: string; kind: string; color: string; to: string; in: number; at: string }[] = [];
+  for (const id of ids) for (const d of fd.times.get(id) ?? []) {
+    const t = fd.trips.get(d.trip); if (!t) continue;
+    const r = fd.routes.get(t.route); if (!r || !keep(r, t)) continue;
+    // Today's service, plus yesterday's trips that run past midnight (times like 25:10).
+    for (const [day, offset] of [[today, 0], [yest, 86400]] as const) {
+      const secs = d.t - offset - today.secs;
+      if (secs < -30 || secs > 3 * 3600) continue;
+      if (!runs(fd, t.service, day.ymd, day.wd)) continue;
+      const clock = (d.t - offset) % 86400;
+      out.push({ line: r.short, kind: KIND[r.type] ?? "bus", color: r.color ? `#${r.color}` : "", to: t.head, in: Math.max(0, Math.round(secs / 60)),
+        at: `${String(Math.floor(clock / 3600)).padStart(2, "0")}:${String(Math.floor(clock / 60) % 60).padStart(2, "0")}` });
+    }
+  }
+  return out.sort((a, b) => a.in - b.in);
 }
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -191,26 +217,53 @@ export async function registerTransit(app: FastifyInstance) {
   app.get("/api/transit/departures", async (req) => {
     const { city = "riga", stop = "", lines = "", limit = "8" } = req.query as Record<string, string>;
     const fd = await feed(city);
-    const ids = fd.byName.get(String(stop).toLowerCase());
-    if (!ids) throw bad(`No stop called "${stop}" in this timetable.`, 404);
     const want = new Set(String(lines).split(",").map((x) => x.trim()).filter(Boolean));
-    const now = new Date();
-    const today = localNow(fd.tz, now), yest = localNow(fd.tz, new Date(now.getTime() - 86400_000));
-    const out: { line: string; kind: string; color: string; to: string; in: number }[] = [];
-    for (const id of ids) for (const d of fd.times.get(id) ?? []) {
-      const t = fd.trips.get(d.trip); if (!t) continue;
-      const r = fd.routes.get(t.route); // Lines are "bus 3" (or just "3" for any kind with that number).
-      if (!r || (want.size && !want.has(r.short) && !want.has(`${KIND[r.type] ?? "bus"} ${r.short}`))) continue;
-      // Today's service, plus yesterday's trips that run past midnight (times like 25:10).
-      for (const [day, offset] of [[today, 0], [yest, 86400]] as const) {
-        const secs = d.t - offset - today.secs;
-        if (secs < -30 || secs > 3 * 3600) continue;
-        if (!runs(fd, t.service, day.ymd, day.wd)) continue;
-        out.push({ line: r.short, kind: KIND[r.type] ?? "bus", color: r.color ? `#${r.color}` : "", to: t.head, in: Math.max(0, Math.round(secs / 60)) });
-      }
+    // Lines are "bus 3" (or just "3" for any kind with that number).
+    const out = departures(fd, String(stop), (r) => !want.size || want.has(r.short) || want.has(lineId(r)));
+    return { stop: stopName(fd, String(stop)), departures: out.slice(0, Math.min(30, Number(limit) || 8)) };
+  });
+
+  // Every line in the city: "bus 25", "tram 11", ...
+  app.get("/api/transit/lines", async (req) => {
+    const fd = await feed(String((req.query as any).city ?? "riga"));
+    const seen = new Map<string, { id: string; kind: string; short: string; name: string; color: string }>();
+    for (const r of fd.routes.values()) if (!seen.has(lineId(r))) seen.set(lineId(r), { id: lineId(r), kind: KIND[r.type] ?? "bus", short: r.short, name: r.long, color: r.color ? `#${r.color}` : "" });
+    return [...seen.values()].sort((a, b) => a.kind.localeCompare(b.kind) || a.short.localeCompare(b.short, undefined, { numeric: true }));
+  });
+
+  // A line's directions, each with its stops in order (from its longest trip).
+  app.get("/api/transit/line", async (req) => {
+    const { city = "riga", line = "" } = req.query as Record<string, string>;
+    const fd = await feed(city);
+    const routeIds = new Set([...fd.routes].filter(([, r]) => lineId(r) === line).map(([id]) => id));
+    if (!routeIds.size) throw bad(`No line "${line}" in this timetable.`, 404);
+    const tripStops = new Map<string, { seq: number; stop: string }[]>();
+    for (const [stop, list] of fd.times) for (const d of list) {
+      const t = fd.trips.get(d.trip);
+      if (t && routeIds.has(t.route)) { const a = tripStops.get(d.trip) ?? []; a.push({ seq: d.seq, stop }); tripStops.set(d.trip, a); }
     }
-    out.sort((a, b) => a.in - b.in);
-    return { stop: fd.stops.get(ids[0]), departures: out.slice(0, Math.min(30, Number(limit) || 8)) };
+    const best = new Map<string, string[]>(); // headsign -> stop names
+    for (const [trip, a] of tripStops) {
+      const head = fd.trips.get(trip)!.head;
+      if ((best.get(head)?.length ?? 0) >= a.length) continue;
+      const names = a.sort((x, y) => x.seq - y.seq).map((x) => fd.stops.get(x.stop)!);
+      best.set(head, names.filter((n, i) => n !== names[i - 1]));
+    }
+    return [...best].map(([to, stops]) => ({ to, stops })).sort((a, b) => b.stops.length - a.stops.length).slice(0, 6);
+  });
+
+  // Several picks at once: [{ line: "bus 25", to: "Iļģuciems", stop: "Matīsa iela" }, ...]
+  app.get("/api/transit/board", async (req) => {
+    const { city = "riga", picks = "[]", limit = "3" } = req.query as Record<string, string>;
+    const fd = await feed(city);
+    let list: { line: string; to?: string; stop: string }[];
+    try { list = JSON.parse(String(picks)).slice(0, 12); } catch { throw bad("Bad picks."); }
+    return list.map((p) => {
+      try {
+        const out = departures(fd, p.stop, (r, t) => lineId(r) === p.line && (!p.to || t.head === p.to));
+        return { ...p, stop: stopName(fd, p.stop), departures: out.slice(0, Math.min(8, Number(limit) || 3)) };
+      } catch (e) { return { ...p, error: (e as Error).message, departures: [] }; }
+    });
   });
 
   // ---------------- calendar (.ics / webcal link) ----------------
