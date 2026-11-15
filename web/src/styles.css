@@ -358,3 +358,8 @@ table.ct tr.on td { background: var(--active); }
 .wall-row .input { width: auto; }
 a.it, a.btn { text-decoration: none; }
 .term-link { position: absolute; top: 10px; right: 14px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; background: #17181b; border: 1px solid var(--line-2); box-shadow: 0 8px 24px rgba(0,0,0,.5); font-size: 12.5px; color: var(--t2); }
+.agents { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.agent { display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--raise); border: 1px solid var(--line); color: var(--t1); cursor: pointer; text-align: left; transition: border-color .15s, background .15s; min-height: 84px; }
+.agent:hover { border-color: var(--line-2); background: var(--hover); }
+.agent-logo { width: 48px; height: 48px; flex: none; display: grid; place-items: center; background: #0b0c0d; border: 1px solid var(--line); }
+@media (max-width: 760px) { .agents { grid-template-columns: 1fr; } }

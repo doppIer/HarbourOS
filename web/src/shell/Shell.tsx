@@ -16,7 +16,7 @@ const AddApp = lazy(() => import("../dialogs/AddApp"));
 const Discover = lazy(() => import("../dialogs/Discover"));
 const LogDrawer = lazy(() => import("../dialogs/LogDrawer"));
 
-const TITLES: Record<string, string> = { home: "Home", terminal: "Terminal", ai: "Claude", store: "Store", files: "Files", settings: "Settings" };
+const TITLES: Record<string, string> = { home: "Home", terminal: "Terminal", ai: "AI", store: "Store", files: "Files", settings: "Settings" };
 
 export function Shell() {
   const v = view.value;

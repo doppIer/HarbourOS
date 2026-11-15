@@ -44,7 +44,7 @@ export function Term({ session, program, visible, onReady, ctrl }: {
     let closed = false;
     const sendResize = () => ws?.readyState === 1 && ws.send("\u0000" + JSON.stringify({ t: "resize", cols: term.cols, rows: term.rows }));
     const open = () => {
-      const q = program ? `?program=${program}` : "";
+      const q = program ? `?program=${encodeURIComponent(program)}` : "";
       ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/term/${encodeURIComponent(session)}${q}`);
       ws.onopen = () => { fit.fit(); sendResize(); };
       ws.onmessage = (e) => { term.write(typeof e.data === "string" ? e.data : new Uint8Array(e.data)); scan(); };

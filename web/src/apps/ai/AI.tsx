@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { api } from "../../lib/ws";
 import { Icon } from "../../icons/Icon";
 import { TerminalTabs } from "../terminal/Terminal";
+import { LOGO_PATHS } from "./logos";
 
 interface Action { id: string; action: string; kind: string; target: string; reason?: string; status: string }
 type Part = { type: "text"; text: string } | { type: "tool"; name: string } | { type: "action"; action: Action };
@@ -164,7 +165,89 @@ function Chat() {
   );
 }
 
+// ---------------- assistant picker ----------------
+interface Status { installed: string[]; sessions: string[]; ollama: boolean; models: { name: string; size: string }[] }
+interface Pick { session: string; program: string; title: string }
+
+const AGENTS = [
+  { id: "claude", title: "Claude Code", by: "Anthropic", line: "Signs in with your claude.ai plan.", logo: <Logo path={LOGO_PATHS.claude} color="#D97757" /> },
+  { id: "gemini", title: "Gemini CLI", by: "Google", line: "Signs in with a Google account.", logo: <Logo path={LOGO_PATHS.googlegemini} color="#8E75B2" /> },
+  { id: "codex", title: "Codex", by: "OpenAI", line: "Signs in with ChatGPT or an API key.", logo: <Mono text=">_" bg="#f2f2f2" fg="#111" /> },
+  { id: "hermes", title: "Hermes Agent", by: "Nous Research", line: "Your own agent, any model provider.", logo: <Mono text="H" bg="#1c1a14" fg="#e8c66a" /> },
+];
+
+function Logo({ path, color }: { path: string; color: string }) {
+  return <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d={path} fill={color} /></svg>;
+}
+function Mono({ text, bg, fg }: { text: string; bg: string; fg: string }) {
+  return <span class="mono" style={{ width: 30, height: 30, display: "grid", placeItems: "center", background: bg, color: fg, fontWeight: 700, fontSize: 14 }}>{text}</span>;
+}
+
 export default function AI() {
-  // Claude Code running on the host. First open installs it and shows its sign-in.
-  return <div style={{ position: "absolute", inset: 0 }}><TerminalTabs fixed={{ name: "claude", program: "claude" }} /></div>;
+  const [pick, setPick] = useState<Pick | null>(null);
+  const [st, setSt] = useState<Status | null>(null);
+  const [model, setModel] = useState("");
+  useEffect(() => { if (!pick) api<Status>("/api/ai/agents").then(setSt).catch(() => setSt({ installed: [], sessions: [], ollama: false, models: [] })); }, [pick]);
+
+  if (pick) return (
+    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderBottom: "1px solid var(--line)" }}>
+        <button class="it" style={{ width: "auto", height: 28 }} onClick={() => setPick(null)}><Icon name="solar:arrow-left-linear" size={15} />Assistants</button>
+        <span style={{ fontWeight: 600 }}>{pick.title}</span>
+        <span class="dim" style={{ fontSize: 12 }}>keeps running on the server when you leave</span>
+      </div>
+      <div style={{ flex: 1, position: "relative" }}>
+        <TerminalTabs key={pick.session} fixed={{ name: pick.session, program: pick.program }} />
+      </div>
+    </div>
+  );
+
+  const running = (session: string) => st?.sessions.includes("harbor-" + session.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32));
+  const tag = (id: string) => running(id) ? <span class="tag" style={{ background: "#12301f", color: "var(--ok)" }}>Running</span>
+    : !st ? null : st.installed.includes(id) ? <span class="tag">Installed</span> : <span class="tag dim">Installs on first open</span>;
+  const openModel = (m: string) => m && setPick({ session: "local-" + m, program: "ollama:" + m, title: m });
+
+  return (
+    <div class="scroll"><div class="home" style={{ maxWidth: 980 }}>
+      <h1>Assistants</h1>
+      <div class="lede">Each one runs on your server in its own session and can read and change it as the terminal user. Pick one; the first open installs it and shows its own sign-in.</div>
+      <div class="agents">
+        {AGENTS.map((a) => (
+          <button key={a.id} class="agent" onClick={() => setPick({ session: a.id, program: a.id, title: a.title })}>
+            <span class="agent-logo">{a.logo}</span>
+            <span style={{ display: "grid", gap: 3, textAlign: "left", minWidth: 0 }}>
+              <span style={{ fontWeight: 600, fontSize: 15 }}>{a.title} <span class="dim" style={{ fontWeight: 400, fontSize: 12.5 }}>· {a.by}</span></span>
+              <span class="muted" style={{ fontSize: 13 }}>{a.line}</span>
+            </span>
+            <span style={{ marginLeft: "auto" }}>{tag(a.id)}</span>
+          </button>
+        ))}
+      </div>
+
+      <div class="sec-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Logo path={LOGO_PATHS.ollama} color="var(--t2)" /> Local models
+        <span class="dim" style={{ fontSize: 12, fontWeight: 400 }}>through Ollama, nothing leaves the server</span>
+      </div>
+      <div class="rows" style={{ padding: 14, display: "grid", gap: 12 }}>
+        {st && !st.ollama && (
+          <div class="muted" style={{ fontSize: 13 }}>Ollama isn't on the server yet. Install it with <span class="mono">curl -fsSL https://ollama.com/install.sh | sh</span>, or run the <span class="mono">ollama/ollama</span> container from the Store. On an i5 with 16 GB, models up to ~8B (e.g. <span class="mono">llama3.2:3b</span>, <span class="mono">qwen2.5-coder:7b</span>) run on the CPU.</div>
+        )}
+        {!!st?.models.length && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {st.models.map((m) => (
+              <button key={m.name} class="btn" style={{ height: 36 }} onClick={() => openModel(m.name)}>
+                <span class="mono">{m.name}</span><span class="dim" style={{ fontSize: 12 }}>{m.size}</span>
+                {running("local-" + m.name) && <span class="dot running" />}
+              </button>
+            ))}
+          </div>
+        )}
+        <form style={{ display: "flex", gap: 8 }} onSubmit={(e) => { e.preventDefault(); openModel(model.trim()); }}>
+          <input class="input mono" placeholder="Model name, e.g. llama3.2:3b (downloads if missing)" value={model} onInput={(e) => setModel(e.currentTarget.value)} />
+          <button class="btn primary" disabled={!/^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/.test(model.trim())}>Open</button>
+        </form>
+        <div class="dim" style={{ fontSize: 12.5 }}>Codex and Hermes can also use these local models: <span class="mono">codex --oss</span>, or pick Ollama in <span class="mono">hermes setup</span>.</div>
+      </div>
+    </div></div>
+  );
 }

@@ -1,3 +1,4 @@
+import { agentStatus, script } from "./terminal/agents.js";
 import { hostExec } from "./host.js";
 import { demo } from "./demo.js";
 import { discover, probe, type Found } from "./apps/discover.js";
@@ -42,8 +43,13 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/ws/term/:name", { websocket: true }, (socket, req) => {
     const { name } = req.params as { name: string };
     const { program } = req.query as { program?: string };
-    attach(socket, name, program === "claude" ? "claude" : undefined);
+    attach(socket, name, program && script(program) ? program : undefined);
   });
+
+  // ---------- coding agents ----------
+  app.get("/api/ai/agents", async () => demo
+    ? { installed: ["claude"], sessions: ["harbor-claude"], ollama: true, models: [{ name: "llama3.2:3b", size: "2.0GB" }, { name: "qwen2.5-coder:7b", size: "4.7GB" }] }
+    : agentStatus());
 
   // ---------- terminal ----------
   // Text that a terminal program copied into tmux's buffer (Claude Code puts

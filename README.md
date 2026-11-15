@@ -42,7 +42,7 @@
 | **Find on server** | Add app → Find on server lists containers with a published port that aren't in the sidebar yet, with names and icons from the store catalog. Tick and add. |
 | **Frame proxy** | Apps that forbid iframes (Nextcloud, Proxmox, …) get an "Open in new tab" card, or "Show it here anyway": HarborOS serves the app on its own port (7081-7090) and drops only `X-Frame-Options` and CSP `frame-ancestors`. |
 | **Wall (tablet)** | `/wall`: a full-screen touch home screen for a tablet that stays on. Clock, weather (Open-Meteo, no key), server vitals and app launcher tiles; long press to edit. Night dimming, wake on touch, burn-in shift, screensaver and keep-awake are set per tablet. Pair a tablet from Settings → Tablets with a QR code; it can only see the wall and open apps. |
-| **Claude** | Claude Code running on the server in tmux. The first open installs it and shows its sign-in, so a claude.ai Pro/Max account is enough. Closing the browser doesn't stop it. |
+| **AI** | Pick an assistant: Claude Code, Gemini CLI, Codex or Hermes Agent, each in its own tmux session on the server. The first open installs it (user-level, no sudo) and shows its own sign-in. Local models run through Ollama (on the host or in its container). |
 | **Accounts** | Admin and member roles, sign-up with admin approval, scrypt-hashed passwords, and a forgot-password flow that works without email. Members see the dashboard and open apps; only admins get the terminal, Claude and controls. |
 | **Light on the box it watches** | One Node process (~40 MB idle), one WebSocket per tab, stats collected once and fanned out, slowing to every 30 s when nobody's looking. ~29 KB gzipped main bundle; terminal and Claude load on demand. |
 
