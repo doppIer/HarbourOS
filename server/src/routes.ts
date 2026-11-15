@@ -1,3 +1,5 @@
+import { demo } from "./demo.js";
+import { discover, probe, type Found } from "./apps/discover.js";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -44,6 +46,18 @@ export async function registerRoutes(app: FastifyInstance) {
 
   // ---------- apps ----------
   app.get("/api/apps", async () => apps.all().map((a) => ({ ...a, status: appStatus(a) })));
+
+  app.get("/api/apps/discover", async (req) => {
+    const host = String((req.query as any).host ?? "").replace(/[^a-zA-Z0-9.:\[\]-]/g, "") || "localhost";
+    if (demo) return demoFound(host);
+    return discover(host, apps.all());
+  });
+  app.get("/api/apps/:id/probe", async (req) => {
+    const a = apps.get((req.params as any).id);
+    if (!a) throw Object.assign(new Error("No such app."), { statusCode: 404 });
+    if (demo) return { reachable: true, embeddable: !/nextcloud/i.test(a.name), reason: /nextcloud/i.test(a.name) ? "This app doesn't allow other pages to show it." : undefined };
+    return probe(a.url, String((req.query as any).origin ?? ""));
+  });
 
   app.put("/api/apps/:id", async (req) => {
     const body = req.body as Partial<AppConfig>;
@@ -268,4 +282,12 @@ export async function registerRoutes(app: FastifyInstance) {
     const { approve } = req.body as { approve: boolean };
     return { status: await approveAction((req.params as any).id, !!approve) };
   });
+}
+
+function demoFound(host: string): Found[] {
+  return [
+    { key: "stack:immich", name: "Immich", icon: "solar:gallery-linear", url: `http://${host}:2283`, ports: [2283], containers: ["immich_server", "immich_postgres", "immich_redis"], composeProject: "immich", running: true },
+    { key: "uptime-kuma", name: "Uptime Kuma", icon: "solar:pulse-linear", url: `http://${host}:3001`, ports: [3001], containers: ["uptime-kuma"], running: true },
+    { key: "stack:paperless", name: "Paperless", icon: "solar:document-linear", url: `http://${host}:8000`, ports: [8000], containers: ["paperless-web", "paperless-db"], composeProject: "paperless", running: false },
+  ];
 }

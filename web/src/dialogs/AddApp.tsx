@@ -5,7 +5,7 @@ import { Icon, ensureIcon, loadFullSolar } from "../icons/Icon";
 
 const blank = {
   name: "", icon: "solar:widget-linear", url: "", containers: [] as string[], composeProject: "", healthUrl: "",
-  startOnDemand: true, idleStopMinutes: 0, alwaysOn: false, startOnBoot: false, section: "Apps", pinned: true,
+  startOnDemand: true, idleStopMinutes: 0, alwaysOn: false, startOnBoot: false, section: "Apps", pinned: true, openMode: "embed" as "embed" | "tab",
 };
 
 export default function AddApp({ app }: { app?: App }) {
@@ -60,7 +60,8 @@ export default function AddApp({ app }: { app?: App }) {
     <div class="scrim" onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div class="dialog" role="dialog" aria-label={app ? "Edit app" : "Add app"}>
         <header>{app ? `Edit ${app.name}` : "Add app"}
-          <button class="iconbtn" style={{ marginLeft: "auto" }} aria-label="Close" onClick={close}><Icon name="solar:close-circle-linear" /></button>
+          {!app && <button class="btn" style={{ marginLeft: "auto", height: 28 }} onClick={() => (dialog.value = { kind: "discover" })}><Icon name="solar:magnifer-linear" size={15} />Find on server</button>}
+          <button class="iconbtn" style={{ marginLeft: app ? "auto" : 0 }} aria-label="Close" onClick={close}><Icon name="solar:close-circle-linear" /></button>
         </header>
         <div class="body">
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 12, alignItems: "end" }}>
@@ -87,6 +88,7 @@ export default function AddApp({ app }: { app?: App }) {
 
           <label class="field">Service URL<input class="input" value={f.url} placeholder="http://100.64.0.7:4533" onInput={(e) => set({ url: e.currentTarget.value })} /></label>
 
+          <label class="check"><input type="checkbox" checked={f.openMode === "tab"} onChange={(e) => set({ openMode: e.currentTarget.checked ? "tab" : "embed" })} />Open in a new tab (for apps that can't be shown inside HarborOS)</label>
           <label class="check"><input type="checkbox" checked={linkOnly} onChange={(e) => setLinkOnly(e.currentTarget.checked)} />Link only (no container)</label>
 
           {!linkOnly && (

@@ -24,7 +24,7 @@ export const settings = signal<Settings | null>(null);
 /** "home" | "terminal" | "ai" | "store" | "settings" | app id */
 export const view = signal<string>(location.hash.slice(1) || "home");
 export const sidebarOpen = signal(false); // mobile drawer
-export const dialog = signal<null | { kind: "add-app"; app?: App } | { kind: "logs"; container: string }>(null);
+export const dialog = signal<null | { kind: "discover" } | { kind: "add-app"; app?: App } | { kind: "logs"; container: string }>(null);
 
 export const currentApp = computed(() => apps.value.find((a) => a.id === view.value) ?? null);
 
@@ -53,6 +53,13 @@ live.on((m) => {
 });
 
 export function navigate(v: string) {
+  const tab = apps.value.find((a) => a.id === v && a.openMode === "tab");
+  if (tab) { // the app refuses iframes: start it if needed and open it next to HarborOS
+    window.open(tab.url, "_blank", "noopener");
+    if (tab.status !== "running" && tab.status !== "link") fetch(`/api/apps/${tab.id}/open`, { method: "POST" }).catch(() => {});
+    sidebarOpen.value = false;
+    return;
+  }
   view.value = v;
   location.hash = v === "home" ? "" : v;
   sidebarOpen.value = false;

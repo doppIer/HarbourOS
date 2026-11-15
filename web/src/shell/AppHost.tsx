@@ -1,7 +1,7 @@
 // Keeps opened apps mounted (hidden) for instant switching; unmounts apps not
 // viewed for `unmountAfterMinutes`. Boots stopped containers on open.
 import { useEffect, useRef, useState } from "preact/hooks";
-import { apps, view, boots, settings, type App } from "../store";
+import { apps, view, boots, settings, isAdmin, type App } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 
@@ -58,7 +58,38 @@ function Frame({ app }: { app: App }) {
     const t = setInterval(() => { if (!document.hidden && view.value === app.id) api(`/api/apps/${app.id}/activity`, { method: "POST" }).catch(() => {}); }, 120_000);
     return () => clearInterval(t);
   }, [app.id]);
-  return <iframe ref={ref} class="frame" src={app.url} title={app.name} allow="fullscreen; clipboard-read; clipboard-write; autoplay" />;
+  // Browsers show a bare "refused to connect" page when an app forbids iframes,
+  // so ask the server first and explain instead.
+  const [check, setCheck] = useState<{ reachable: boolean; embeddable: boolean; reason?: string } | null>(null);
+  useEffect(() => {
+    setCheck(null);
+    api<typeof check>(`/api/apps/${app.id}/probe?origin=${encodeURIComponent(location.origin)}`).then(setCheck).catch(() => {});
+  }, [app.id, app.url]);
+  const blocked = check && (!check.embeddable || !check.reachable);
+  return (
+    <>
+      {!blocked && <iframe ref={ref} class="frame" src={app.url} title={app.name} allow="fullscreen; clipboard-read; clipboard-write; autoplay" />}
+      {blocked && (
+        <div class="boot">
+          <div class="boot-card">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Icon name={app.icon} size={28} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 17, fontWeight: 600 }}>{check!.embeddable ? `Can't reach ${app.name}` : `${app.name} opens in its own tab`}</div>
+                <div class="muted" style={{ fontSize: 13 }}>{check!.reason}</div>
+              </div>
+            </div>
+            <div class="mono dim" style={{ fontSize: 12, margin: "14px 0" }}>{app.url}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button class="btn primary" onClick={() => window.open(app.url, "_blank", "noopener")}><Icon name="solar:square-top-down-linear" size={15} />Open in new tab</button>
+              {!check!.embeddable && isAdmin.value && <button class="btn" onClick={() => api(`/api/apps/${app.id}`, { method: "PUT", json: { openMode: "tab" } })}>Always open in a new tab</button>}
+              {check!.embeddable && <button class="btn" onClick={() => setCheck({ reachable: true, embeddable: true })}>Try here anyway</button>}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 function BootScreen({ app }: { app: App }) {

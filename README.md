@@ -39,6 +39,7 @@
 | **Live dashboard** | CPU per core, temperature, RAM, swap, disks, network, Tailscale, estimated watts and monthly cost, and how much stopped containers are saving. |
 | **Widgets you edit as files** | Every tile is a small JS file in `data/widgets/`. Save it and the tile reloads in every open browser, with no build or restart. |
 | **Terminal** | xterm.js tabs backed by tmux on the host, so sessions survive closing the browser. iPhone gets an extra key row. |
+| **Find on server** | Add app → Find on server lists containers with a published port that aren't in the sidebar yet, with names and icons from the store catalog. Tick and add. |
 | **Claude** | Claude Code running on the server in tmux. The first open installs it and shows its sign-in, so a claude.ai Pro/Max account is enough. Closing the browser doesn't stop it. |
 | **Accounts** | Admin and member roles, sign-up with admin approval, scrypt-hashed passwords, and a forgot-password flow that works without email. Members see the dashboard and open apps; only admins get the terminal, Claude and controls. |
 | **Light on the box it watches** | One Node process (~40 MB idle), one WebSocket per tab, stats collected once and fanned out, slowing to every 30 s when nobody's looking. ~29 KB gzipped main bundle; terminal and Claude load on demand. |

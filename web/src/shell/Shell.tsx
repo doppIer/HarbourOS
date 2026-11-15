@@ -13,6 +13,7 @@ const Store = lazy(() => import("../apps/store/Store"));
 const Files = lazy(() => import("../apps/files/Files"));
 const SettingsView = lazy(() => import("../dialogs/Settings"));
 const AddApp = lazy(() => import("../dialogs/AddApp"));
+const Discover = lazy(() => import("../dialogs/Discover"));
 const LogDrawer = lazy(() => import("../dialogs/LogDrawer"));
 
 const TITLES: Record<string, string> = { home: "Home", terminal: "Terminal", ai: "Claude", store: "Store", files: "Files", settings: "Settings" };
@@ -56,6 +57,7 @@ export function Shell() {
       <ContextMenuHost />
       <Suspense fallback={null}>
         {d?.kind === "add-app" && <AddApp app={d.app} />}
+        {d?.kind === "discover" && <Discover />}
         {d?.kind === "logs" && <LogDrawer container={d.container} />}
       </Suspense>
     </>

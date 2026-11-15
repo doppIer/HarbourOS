@@ -18,6 +18,7 @@ export interface AppConfig {
   order: number;
   section: string;            // sidebar section, e.g. "Apps"
   stripFrameHeaders?: boolean;
+  openMode?: "embed" | "tab";   // "tab": the app refuses iframes, open it in a new browser tab
 }
 
 export interface ContainerInfo {
