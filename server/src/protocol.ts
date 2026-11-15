@@ -95,7 +95,8 @@ export type ServerMsg =
   | { t: "log"; id: string; line: string }
   | { t: "widgets"; changed: string[] }
   | { t: "store"; d: StoreJob }
-  | { t: "nowplaying"; d: NowPlaying | null };
+  | { t: "nowplaying"; d: NowPlaying | null }
+  | { t: "volume"; d: number };
 
 /** Music on the server's speaker (AirPlay / Spotify Connect), see nowplaying.ts. */
 export interface NowPlaying {

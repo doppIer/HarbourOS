@@ -53,7 +53,7 @@ function memberAllowed(method: string, url: string, role: string): boolean {
   // Wall screen: members and paired tablets.
   if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather" || p === "/api/calendar" || p.startsWith("/api/transit/") || p.startsWith("/api/music/") || p.startsWith("/api/nowplaying"))) return true;
   if (method === "PUT" && p === "/api/wall/profile") return true;
-  if (method === "POST" && p === "/api/nowplaying/control") return true;
+  if (method === "POST" && (p === "/api/nowplaying/control" || p === "/api/nowplaying/volume")) return true;
   if (role === "device") return (method === "GET" && ["/ws", "/api/apps", "/api/containers", "/api/settings", "/api/widgets"].includes(p))
     || (method === "POST" && /^\/api\/apps\/[^/]+\/(open|activity)$/.test(p));
   if (method === "GET") {

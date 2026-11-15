@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { effect } from "@preact/signals";
 import { stats, containers, apps, history, navigate } from "../store";
 import { api, live } from "../lib/ws";
+import * as music from "../lib/nowplaying";
 import { ui } from "./ui";
 
 export type Size = "s" | "m" | "l" | "w" | "tall" | "hero";
@@ -20,6 +21,15 @@ export interface WidgetCtx {
   api<T = any>(path: string): Promise<T>;
   /** "wall" on the tablet screen, "desk" on the dashboard. */
   mode: "wall" | "desk";
+  /** What the server's speaker plays (AirPlay / Spotify Connect), its volume, and controls. */
+  music: {
+    /** Calls `f` now and on every change; returns a function that stops it. */
+    watch(f: (now: music.NowPlaying | null, volume: number | null) => void): () => void;
+    position(n: music.NowPlaying): number;
+    control(action: "playpause" | "next" | "previous"): Promise<unknown>;
+    loadVolume(): Promise<void>;
+    setVolume(v: number): void;
+  };
 }
 export interface WidgetData { stats: typeof stats.value; containers: typeof containers.value; apps: typeof apps.value; history: typeof history }
 export interface WidgetDef {
@@ -60,6 +70,10 @@ export function Tile({ item, editing, mode = "desk", open = navigate }: { item: 
       try {
         inst = def.mount(el, {
           size: item.size, ui, opts: item.opts ?? {}, mode, api: (p: string) => api(p),
+          music: {
+            watch: (f) => { music.watchNowPlaying(); return effect(() => f(music.np.value, music.volume.value)); },
+            position: music.position, control: music.control, loadVolume: music.loadVolume, setVolume: music.setVolume,
+          },
           actions: { container: (n, op) => api(`/api/containers/${encodeURIComponent(n)}/${op}`, { method: "POST" }), open },
         });
         // Re-run update only when data signals change; never re-render the dashboard.

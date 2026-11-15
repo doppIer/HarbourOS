@@ -163,5 +163,14 @@ else
   echo "Spotify Connect: raspotify not found, skipped"
 fi
 
+# ---------- volume ----------
+# HarbourOS reaches the host as this user (TERMINAL_SSH_USER); it needs the sound card for the volume slider.
+HUSER="${TERMINAL_SSH_USER:-harbor}"
+if id "$HUSER" >/dev/null 2>&1 && command -v amixer >/dev/null; then
+  usermod -aG audio "$HUSER" && echo "Volume: $HUSER can use the sound card"
+else
+  echo "Volume: skipped (no '$HUSER' user or no amixer)"
+fi
+
 echo
 echo "Done. Play something to the server from your phone; the wall shows it."

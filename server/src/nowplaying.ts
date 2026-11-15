@@ -93,6 +93,29 @@ export async function registerNowPlaying(app: FastifyInstance) {
     return reply.send(coverBytes.body);
   });
 
+  // Speaker volume: the host's ALSA mixer, so it works for AirPlay and Spotify alike.
+  // NOWPLAYING_MIXER / NOWPLAYING_CARD pick the control (default "Master" on card 0).
+  const MIXER = (process.env.NOWPLAYING_MIXER ?? "Master").replace(/[^\w .-]/g, "");
+  const CARD = (process.env.NOWPLAYING_CARD ?? "0").replace(/[^\w-]/g, "");
+  let demoVol = 45;
+  const readVol = (out: string) => { const m = out.match(/\[(\d{1,3})%\]/); return m ? Number(m[1]) : null; };
+  app.get("/api/nowplaying/volume", async (_req, reply) => {
+    if (demo) return { volume: demoVol };
+    const r = await hostExec(`amixer -c ${CARD} sget '${MIXER}'`);
+    const v = readVol(r.out.toString());
+    if (r.code !== 0 || v === null) return reply.code(502).send({ error: r.err.includes("ermission") || r.err.includes("cannot open") ? "HarbourOS can't reach the sound card. Run sudo bash host/setup-nowplaying.sh again." : "Couldn't read the volume." });
+    return { volume: v };
+  });
+  app.post("/api/nowplaying/volume", async (req, reply) => {
+    const v = Math.round(Number((req.body as any)?.volume));
+    if (!(v >= 0 && v <= 100)) return reply.code(400).send({ error: "Volume is 0–100." });
+    if (demo) { demoVol = v; hub.publish("nowplaying", { t: "volume", d: v }); return { volume: v }; }
+    const r = await hostExec(`amixer -c ${CARD} -q sset '${MIXER}' ${v}%`);
+    if (r.code !== 0) return reply.code(502).send({ error: "HarbourOS can't reach the sound card. Run sudo bash host/setup-nowplaying.sh again." });
+    hub.publish("nowplaying", { t: "volume", d: v });
+    return { volume: v };
+  });
+
   // Demo mode: something to look at on the wall.
   if (demo) app.post("/api/nowplaying/demo", async (req) => {
     const on = (req.body as any)?.on !== false;

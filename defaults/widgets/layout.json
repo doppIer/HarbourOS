@@ -1,5 +1,6 @@
 [
   { "widget": "containers-summary", "size": "tall" },
+  { "widget": "nowplaying", "size": "m" },
   { "widget": "system-area", "size": "l" },
   { "widget": "cpu", "size": "s" },
   { "widget": "memory", "size": "s" },

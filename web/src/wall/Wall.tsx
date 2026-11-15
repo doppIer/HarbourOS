@@ -26,8 +26,8 @@ interface Profile { id: string; name: string; layout: LayoutItem[]; screen: Scre
 // Ready-made layouts. The grid has 4 columns: s = 1×1, m = 2×1, l = 2×2, w = 4×1, tall = 1×2.
 interface Preset { id: string; name: string; note: string; header: boolean; items: { widget: string; size: Size }[] }
 const PRESETS: Preset[] = [
-  { id: "home", name: "Home", note: "Big clock up top, then weather, departures, calendar", header: false,
-    items: [{ widget: "clock", size: "hero" }, { widget: "weather", size: "m" }, { widget: "bus", size: "m" }, { widget: "calendar", size: "m" }, { widget: "system-summary", size: "m" }] },
+  { id: "home", name: "Home", note: "Big clock up top, then music, weather, departures, calendar", header: false,
+    items: [{ widget: "clock", size: "hero" }, { widget: "nowplaying", size: "m" }, { widget: "weather", size: "m" }, { widget: "bus", size: "m" }, { widget: "calendar", size: "m" }, { widget: "system-summary", size: "m" }] },
   { id: "agenda", name: "Agenda", note: "Big calendar beside weather and departures", header: false,
     items: [{ widget: "clock", size: "w" }, { widget: "calendar", size: "l" }, { widget: "weather", size: "m" }, { widget: "bus", size: "m" }] },
   { id: "commute", name: "Commute", note: "Departures first, for the hallway", header: true,
@@ -303,9 +303,9 @@ function Sheet({ title, close, children }: { title: string; close: () => void; c
 
 const PRETTY: Record<string, string> = {
   clock: "Clock", weather: "Weather", "system-summary": "System", "system-area": "System load chart", cpu: "CPU", memory: "Memory",
-  power: "Power", temp: "Temperature", bus: "Bus departures", calendar: "Calendar", network: "Network", disks: "Disks", savings: "Savings", load: "Load", "containers-summary": "Containers",
+  power: "Power", temp: "Temperature", bus: "Bus departures", nowplaying: "Now playing", calendar: "Calendar", network: "Network", disks: "Disks", savings: "Savings", load: "Load", "containers-summary": "Containers",
 };
-const DEFAULT_SIZE: Record<string, Size> = { clock: "hero", weather: "m", "system-summary": "m", "system-area": "l", "containers-summary": "tall", bus: "m", calendar: "tall" };
+const DEFAULT_SIZE: Record<string, Size> = { clock: "hero", weather: "m", "system-summary": "m", "system-area": "l", "containers-summary": "tall", bus: "m", calendar: "tall", nowplaying: "m" };
 
 function AddSheet({ close, add }: { close: () => void; add: (i: LayoutItem) => void }) {
   const [list, setList] = useState<string[]>([]);
