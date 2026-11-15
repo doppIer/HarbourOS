@@ -319,6 +319,11 @@ const OPTIONS: Record<string, (o: Record<string, string>, set: (o: Record<string
   ),
   clock: (o, set) => (
     <>
+      <label class="field"><span>Style</span>
+        <select class="input" value={o.style || "flip"} onChange={(e) => set({ ...o, style: e.currentTarget.value })}>
+          <option value="flip">Flip cards</option><option value="plain">Plain digits</option>
+        </select>
+      </label>
       <label class="check"><input type="checkbox" checked={o.seconds === "1"} onChange={(e) => set({ ...o, seconds: e.currentTarget.checked ? "1" : "" })} />Show seconds</label>
       <label class="check"><input type="checkbox" checked={o.h12 === "1"} onChange={(e) => set({ ...o, h12: e.currentTarget.checked ? "1" : "" })} />12-hour clock</label>
     </>
