@@ -17,8 +17,23 @@ export interface Screen {
   saver: { on: boolean; minutes: number; style: "clock" | "black" };
   keepAwake: boolean;
 }
-export interface Look { theme: "dark" | "light"; glass: number; background: string }
-interface Profile { id: string; name: string; layout: LayoutItem[]; screen: Screen; look: Look }
+export interface Look { theme: "dark" | "light"; glass: number; background: string; header: boolean; preset: string }
+interface Profile { id: string; name: string; layout: LayoutItem[]; screen: Screen; look: Look; custom?: LayoutItem[] }
+
+// Ready-made layouts. The grid has 4 columns: s = 1×1, m = 2×1, l = 2×2, w = 4×1, tall = 1×2.
+interface Preset { id: string; name: string; note: string; header: boolean; items: { widget: string; size: Size }[] }
+const PRESETS: Preset[] = [
+  { id: "home", name: "Home", note: "Greeting, weather, departures, calendar", header: true,
+    items: [{ widget: "weather", size: "m" }, { widget: "bus", size: "m" }, { widget: "calendar", size: "m" }, { widget: "system-summary", size: "m" }] },
+  { id: "agenda", name: "Agenda", note: "Big calendar beside weather and departures", header: false,
+    items: [{ widget: "clock", size: "w" }, { widget: "calendar", size: "l" }, { widget: "weather", size: "m" }, { widget: "bus", size: "m" }] },
+  { id: "commute", name: "Commute", note: "Departures first, for the hallway", header: true,
+    items: [{ widget: "bus", size: "l" }, { widget: "clock", size: "m" }, { widget: "weather", size: "m" }] },
+  { id: "clock", name: "Bedside", note: "A big clock and little else", header: false,
+    items: [{ widget: "clock", size: "w" }, { widget: "weather", size: "m" }, { widget: "calendar", size: "m" }] },
+  { id: "server", name: "Server", note: "How the home server is doing", header: true,
+    items: [{ widget: "system-summary", size: "w" }, { widget: "system-area", size: "l" }, { widget: "containers-summary", size: "m" }, { widget: "weather", size: "m" }] },
+];
 const WALL_BGS = [["none", "None"], ["ascii:koi", "Koi"], ["ascii:jellyfish", "Jellyfish"], ["ascii:butterflies", "Butterflies"], ["ascii:cranes", "Cranes"], ["ascii:dragonflies", "Dragonflies"]];
 
 const SIZES: Size[] = ["s", "m", "l", "w", "tall"];
@@ -34,12 +49,23 @@ export function Wall() {
   const [p, setP] = useState<Profile | null>(null);
   const [err, setErr] = useState("");
   const [editing, setEditing] = useState(false);
-  const [sheet, setSheet] = useState<null | "add" | "screen" | { opts: number }>(null);
+  const [sheet, setSheet] = useState<null | "add" | "screen" | "layouts" | { opts: number }>(null);
   const [open, setOpen] = useState<App | null>(null);
 
   useEffect(() => { api<Profile>("/api/wall/profile").then(setP).catch((e) => setErr(e.message)); }, []);
-  const save = (n: Profile) => { setP(n); api("/api/wall/profile", { method: "PUT", json: { layout: n.layout, screen: n.screen, look: n.look } }).catch((e) => setErr(e.message)); };
-  const setLayout = (layout: LayoutItem[]) => p && save({ ...p, layout });
+  const save = (n: Profile) => { setP(n); api("/api/wall/profile", { method: "PUT", json: { layout: n.layout, screen: n.screen, look: n.look, custom: n.custom } }).catch((e) => setErr(e.message)); };
+  // Any edit makes the layout your own ("Custom").
+  const setLayout = (layout: LayoutItem[]) => p && save({ ...p, layout, custom: undefined, look: { ...p.look, preset: "custom" } });
+  const applyPreset = (id: string) => {
+    if (!p || id === p.look.preset) return;
+    const mine = p.look.preset === "custom" ? p.layout : p.custom ?? [];
+    if (id === "custom") return save({ ...p, layout: mine.length ? mine : p.layout, custom: undefined, look: { ...p.look, preset: "custom", header: true } });
+    const pr = PRESETS.find((x) => x.id === id)!;
+    // Keep your settings (bus lines, calendar link, ...) from tiles you already had.
+    const optsOf = (w: string) => [...p.layout, ...mine].find((i) => i.widget === w && i.opts)?.opts;
+    const layout = pr.items.map((i) => ({ ...i, ...(optsOf(i.widget) ? { opts: optsOf(i.widget) } : {}) }));
+    save({ ...p, layout, custom: mine, look: { ...p.look, preset: id, header: pr.header } });
+  };
   const setScreen = (screen: Screen) => p && save({ ...p, screen });
   const setLook = (look: Look) => p && save({ ...p, look });
 
@@ -62,13 +88,14 @@ export function Wall() {
       <nav class="wall-rail" aria-label="Wall">
         {me.value?.role !== "device" && <a class="wall-rail-btn" href="/" aria-label="Back to the desktop" title="Desktop"><Icon name="solar:home-2-linear" size={24} /></a>}
         <button class={`wall-rail-btn ${editing ? "on" : ""}`} aria-label="Edit tiles" title="Edit tiles" onClick={() => setEditing(!editing)}><Icon name="solar:pen-2-linear" size={22} /></button>
+        <button class="wall-rail-btn" aria-label="Layouts" title="Layouts" onClick={() => setSheet("layouts")}><Icon name="solar:widget-5-linear" size={22} /></button>
         <button class="wall-rail-btn" aria-label="Add tile" title="Add tile" onClick={() => { setEditing(true); setSheet("add"); }}><Icon name="solar:widget-add-linear" size={22} /></button>
         <button class="wall-rail-btn" aria-label="Full screen" title="Full screen" onClick={() => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {})}><Icon name="solar:maximize-square-linear" size={22} /></button>
         <span style={{ flex: 1 }} />
         <button class="wall-rail-btn" aria-label="Screen settings" title="Screen" onClick={() => setSheet("screen")}><Icon name="solar:settings-linear" size={22} /></button>
       </nav>
       <div class="wall-inner" style={{ transform: fx.shift }}>
-        <WallHeader />
+        {p.look.header !== false && <WallHeader />}
         {editing && (
           <div class="wall-bar">
             <span style={{ fontWeight: 600 }}>Editing {p.name}</span>
@@ -105,6 +132,7 @@ export function Wall() {
       )}
 
       {sheet === "add" && <AddSheet close={() => setSheet(null)} add={(it) => { setLayout([...p.layout, it]); setSheet(null); }} />}
+      {sheet === "layouts" && <LayoutsSheet current={p.look.preset ?? "custom"} custom={p.look.preset === "custom" ? p.layout : p.custom ?? []} pick={(id) => { applyPreset(id); setSheet(null); }} close={() => setSheet(null)} />}
       {sheet === "screen" && <ScreenSheet screen={p.screen} look={p.look} onLook={setLook} wakeLock={fx.wakeLock} close={() => setSheet(null)} onChange={setScreen} />}
       {sheet && typeof sheet === "object" && (
         <OptionsSheet item={p.layout[sheet.opts]} close={() => setSheet(null)}
@@ -299,6 +327,36 @@ const OPTIONS: Record<string, (o: Record<string, string>, set: (o: Record<string
 
 interface Pick { line: string; to: string; stop: string }
 interface Line { id: string; kind: string; short: string; name: string; color: string }
+function MiniGrid({ items }: { items: { widget: string; size: Size }[] }) {
+  return (
+    <div class="wall-mini">
+      {items.map((i, k) => <div key={k} class={`wall-mini-cell ${i.size}`}>{PRETTY[i.widget] ?? i.widget}</div>)}
+    </div>
+  );
+}
+
+function LayoutsSheet({ current, custom, pick, close }: { current: string; custom: LayoutItem[]; pick: (id: string) => void; close: () => void }) {
+  return (
+    <Sheet title="Layouts" close={close}>
+      <div class="wall-layouts">
+        {PRESETS.map((pr) => (
+          <button key={pr.id} class={`wall-layout ${current === pr.id ? "on" : ""}`} onClick={() => pick(pr.id)}>
+            {pr.header && <div class="wall-mini-head" />}
+            <MiniGrid items={pr.items} />
+            <b>{pr.name}</b><span class="dim">{pr.note}</span>
+          </button>
+        ))}
+        <button class={`wall-layout ${current === "custom" ? "on" : ""}`} onClick={() => pick("custom")}>
+          <div class="wall-mini-head" />
+          {custom.length ? <MiniGrid items={custom} /> : <div class="wall-mini dim" style={{ placeItems: "center", display: "grid" }}>Empty</div>}
+          <b>Custom</b><span class="dim">Your own: edit tiles with the pencil</span>
+        </button>
+      </div>
+      <div class="dim" style={{ fontSize: 12.5 }}>Picking a layout keeps your Custom one, and tiles keep their settings (bus lines, calendar link). Editing any tile turns it into your Custom layout.</div>
+    </Sheet>
+  );
+}
+
 function BusOptions({ o, set }: { o: Record<string, string>; set: (o: Record<string, string>) => void }) {
   const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
@@ -403,6 +461,7 @@ function ScreenSheet({ screen, look, onLook, wakeLock, close, onChange }: { scre
             {(["dark", "light"] as const).map((t) => <button key={t} class={`btn ${l.theme === t ? "primary" : ""}`} onClick={() => lk({ theme: t })}>{t === "dark" ? "Dark" : "Light"}</button>)}
           </div>
         </div>
+        <label class="check"><input type="checkbox" checked={l.header !== false} onChange={(e) => lk({ header: e.currentTarget.checked })} />Greeting and weather line at the top</label>
         <div class="wall-row">Tile see-through <input type="range" min={0} max={90} value={100 - l.glass} onInput={(e) => lk({ glass: 100 - Number(e.currentTarget.value) })} /> <span class="mono">{100 - l.glass}%</span></div>
         <div class="wall-row">Background
           <select class="input" value={l.background} onChange={(e) => lk({ background: e.currentTarget.value })}>

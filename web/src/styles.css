@@ -404,3 +404,14 @@ a.it, a.btn { text-decoration: none; }
   .wall-rail > span { display: none; }
   .wall .wall-inner { left: 0; padding-bottom: 96px; }
 }
+
+/* Layout picker */
+.wall-layouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.wall-layout { display: grid; gap: 6px; text-align: left; padding: 10px; border-radius: 16px; background: var(--raise); border: 1px solid var(--line); color: var(--t1); cursor: pointer; font: inherit; }
+.wall-layout.on { border-color: var(--acc); box-shadow: 0 0 0 1px var(--acc) inset; }
+.wall-layout span { font-size: 12px; }
+.wall-mini-head { height: 10px; width: 55%; border-radius: 4px; background: var(--line-2); }
+.wall-mini { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 26px; gap: 4px; grid-auto-flow: dense; min-height: 82px; }
+.wall-mini-cell { border-radius: 6px; background: var(--active); border: 1px solid var(--line); font-size: 9px; color: var(--t3); padding: 3px 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.wall-mini-cell.m { grid-column: span 2; } .wall-mini-cell.l { grid-column: span 2; grid-row: span 2; }
+.wall-mini-cell.w { grid-column: span 4; } .wall-mini-cell.tall { grid-row: span 2; }
