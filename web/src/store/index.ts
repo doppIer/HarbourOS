@@ -4,6 +4,9 @@ import { live, api } from "../lib/ws";
 
 export type App = AppConfig & { status: AppStatus };
 export interface Settings {
+  assistant?: { brain: "rules" | "ollama" | "claude" | "session"; router: "rules" | "model"; ollamaUrl: string; ollamaModel: string; routerModel: string; session: string; wakeWord: string };
+  music?: { navidromeUrl: string; navidromeUser: string; navidromePass?: string };
+  hasMusicPass?: boolean;
   accent: string; pricePerKwh: number; currency: string; baselineWatts: number;
   plugEntity?: string; haUrl?: string; hasHaToken: boolean;
   background: { module: string; dim: number; blur: number; pauseHidden: boolean; pauseWhenApp: boolean };

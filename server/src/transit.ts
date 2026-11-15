@@ -273,12 +273,21 @@ export async function registerTransit(app: FastifyInstance) {
   });
 }
 
+/** Next departures for a list of picks (used by the assistant). */
+export async function boardFor(city: string, picks: { line: string; to?: string; stop: string }[]) {
+  const fd = await feed(city);
+  return picks.slice(0, 12).map((p) => {
+    try { return { ...p, stop: stopName(fd, p.stop), departures: departures(fd, p.stop, (r, t) => lineId(r) === p.line && (!p.to || t.head === p.to)).slice(0, 3) }; }
+    catch (e) { return { ...p, error: (e as Error).message, departures: [] }; }
+  });
+}
+
 // ---------------- iCalendar ----------------
 const icsCache = new Map<string, { at: number; text: string }>();
 // Only calendar services, so this can't be used to poke at other machines.
 const CAL_HOSTS = /(^|\.)(icloud\.com|google\.com|outlook\.com|office365\.com|live\.com|fastmail\.com|proton\.me)$/i;
 
-async function calendar(raw: string, days: number) {
+export async function calendar(raw: string, days: number) {
   let u: URL;
   try { u = new URL(raw.trim().replace(/^webcals?:\/\//i, "https://")); } catch { throw bad("Paste the calendar's share link (webcal://… or https://…)."); }
   if (u.protocol !== "https:" || !CAL_HOSTS.test(u.hostname)) throw bad("That link isn't from a calendar service HarborOS knows (iCloud, Google, Outlook, Fastmail, Proton).");

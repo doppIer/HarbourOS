@@ -148,7 +148,13 @@ export async function registerRoutes(app: FastifyInstance) {
 
   // ---------- settings ----------
   app.get("/api/settings", async () => settings.public());
-  app.put("/api/settings", async (req) => { settings.set(req.body as any); return settings.public(); });
+  app.put("/api/settings", async (req) => {
+    const b = req.body as any;
+    // The Navidrome password is never sent to the browser; keep it unless a new one comes in.
+    if (b?.music) b.music = { ...b.music, navidromePass: b.music.navidromePass || settings.get().music?.navidromePass };
+    delete b?.hasMusicPass; delete b?.hasHaToken;
+    settings.set(b); return settings.public();
+  });
 
   // ---------- icons ----------
   app.post("/api/icons", async (req) => {

@@ -10,6 +10,7 @@ import { registerAuth } from "./auth.js";
 import { registerRoutes } from "./routes.js";
 import { registerWall } from "./wall.js";
 import { registerTransit } from "./transit.js";
+import { registerAssistant } from "./assistant.js";
 import { startCollector } from "./collectors/scheduler.js";
 import { startContainerWatch } from "./docker/containers.js";
 import { publishApps, startIdleWatcher, startOnBoot } from "./lifecycle/apps.js";
@@ -27,6 +28,7 @@ await registerAuth(app);
 await registerRoutes(app);
 await registerWall(app);
 await registerTransit(app);
+await registerAssistant(app);
 
 if (fs.existsSync(env.publicDir)) {
   await app.register(fastifyStatic, {

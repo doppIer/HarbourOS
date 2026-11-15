@@ -178,6 +178,8 @@ function AdminSettings() {
         <label class="field">Blur {f.loginBackground.blur}px<input type="range" min={0} max={20} step={1} value={f.loginBackground.blur} onInput={(e) => setLbg({ blur: Number(e.currentTarget.value) })} /></label>
       </div>
 
+      <AssistantSettings f={f} set={set} />
+
       <div class="sec-title">Appearance</div>
       <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
         <label class="field">Accent color
@@ -269,6 +271,82 @@ function Tablets() {
         )}
       </div>
       <div class="rows" style={{ padding: 16, marginTop: 10 }}><WeatherPlace /></div>
+    </>
+  );
+}
+
+// ---------------- assistant + music ----------------
+const A_DEF = { brain: "rules", router: "rules", ollamaUrl: "http://host.docker.internal:11434", ollamaModel: "llama3.2:3b", routerModel: "qwen2.5:1.5b", session: "", wakeWord: "hey harbor" } as const;
+const BRAINS = [
+  ["rules", "Commands only", "Music, buses, calendar, time. Instant, no AI."],
+  ["ollama", "Ollama (local)", "A model on this server answers. Private and free; a few seconds per answer."],
+  ["claude", "Claude API", "Smartest and fast. Needs ANTHROPIC_API_KEY on the server; billed per use."],
+  ["session", "AI session", "Types what you say into a running Claude Code / agent session in the terminal."],
+] as const;
+
+function AssistantSettings({ f, set }: { f: Settings; set: (p: Partial<Settings>) => void }) {
+  const a = { ...A_DEF, ...(f.assistant ?? {}) } as NonNullable<Settings["assistant"]>;
+  const m = { navidromeUrl: "", navidromeUser: "", ...(f.music ?? {}) };
+  const setA = (p: Partial<typeof a>) => set({ assistant: { ...a, ...p } });
+  const setM = (p: Partial<typeof m>) => set({ music: { ...m, ...p } });
+  const [st, setSt] = useState<{ models: string[]; sessions: string[]; claude: boolean } | null>(null);
+  const [test, setTest] = useState("");
+  useEffect(() => { api<any>("/api/assistant/status").then(setSt).catch(() => setSt({ models: [], sessions: [], claude: false })); }, [a.ollamaUrl]);
+  const models = st?.models ?? [];
+  const ModelPick = ({ value, on }: { value: string; on: (v: string) => void }) => models.length
+    ? <select class="input" value={value} onChange={(e) => on(e.currentTarget.value)}>{[...new Set([value, ...models])].map((x) => <option value={x}>{x}</option>)}</select>
+    : <input class="input mono" value={value} onChange={(e) => on(e.currentTarget.value.trim())} />;
+
+  return (
+    <>
+      <div class="sec-title">Assistant</div>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
+        <div class="muted" style={{ fontSize: 13 }}>Used by AI Talk on wall tablets. Known commands always run instantly; the brain answers everything else.</div>
+        <div class="field">Brain
+          <div class="brain-grid">
+            {BRAINS.map(([id, name, note]) => (
+              <button type="button" class={`brain ${a.brain === id ? "on" : ""}`} onClick={() => setA({ brain: id })}>
+                <b>{name}</b><span>{note}</span>
+                {id === "claude" && st && !st.claude && <em>No API key on the server</em>}
+              </button>
+            ))}
+          </div>
+        </div>
+        {(a.brain === "ollama" || a.router === "model") && (
+          <label class="field">Ollama address<input class="input mono" value={a.ollamaUrl} onChange={(e) => setA({ ollamaUrl: e.currentTarget.value.trim() })} />
+            <span class="dim" style={{ fontSize: 12 }}>{st ? (models.length ? `${models.length} models found` : "Not reachable from HarborOS, or no models pulled.") : "Checking…"}</span>
+          </label>
+        )}
+        {a.brain === "ollama" && <label class="field">Answer model<ModelPick value={a.ollamaModel} on={(v) => setA({ ollamaModel: v })} /></label>}
+        {a.brain === "session" && (
+          <label class="field">Session
+            <select class="input" value={a.session} onChange={(e) => setA({ session: e.currentTarget.value })}>
+              <option value="">Pick a running session…</option>
+              {[...new Set([a.session, ...(st?.sessions ?? [])])].filter(Boolean).map((x) => <option value={x}>{x}</option>)}
+            </select>
+          </label>
+        )}
+        <label class="field">Router
+          <select class="input" value={a.router} onChange={(e) => setA({ router: e.currentTarget.value as any })}>
+            <option value="rules">Rules only (instant)</option>
+            <option value="model">Rules, then a small model for what they miss</option>
+          </select>
+        </label>
+        {a.router === "model" && <label class="field">Router model (1–3B is plenty)<ModelPick value={a.routerModel} on={(v) => setA({ routerModel: v })} /></label>}
+        <label class="field">Wake word<input class="input" value={a.wakeWord} onChange={(e) => setA({ wakeWord: e.currentTarget.value.toLowerCase() })} /></label>
+      </div>
+
+      <div class="sec-title">Music</div>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
+        <div class="muted" style={{ fontSize: 13 }}>DJ mode and "play some music" use your Navidrome library and play on the tablet.</div>
+        <label class="field">Navidrome address<input class="input mono" placeholder="http://navidrome:4533" value={m.navidromeUrl} onChange={(e) => setM({ navidromeUrl: e.currentTarget.value.trim() })} /></label>
+        <label class="field">User<input class="input" value={m.navidromeUser} onChange={(e) => setM({ navidromeUser: e.currentTarget.value.trim() })} /></label>
+        <label class="field">Password<input class="input" type="password" placeholder={f.hasMusicPass ? "Saved. Type to replace it." : ""} onChange={(e) => setM({ navidromePass: e.currentTarget.value })} /></label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button class="btn" type="button" onClick={() => { setTest("Save first, then test."); api("/api/music/test").then(() => setTest("Connected.")).catch((e) => setTest((e as Error).message)); }}>Test connection</button>
+          <span class="dim" style={{ fontSize: 13 }}>{test}</span>
+        </div>
+      </div>
     </>
   );
 }
