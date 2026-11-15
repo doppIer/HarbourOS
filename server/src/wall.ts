@@ -24,7 +24,7 @@ const YEAR = 365 * 24 * 3600;
 const sha = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 
 // ---------- profiles ----------
-export interface WallItem { widget: string; size: "s" | "m" | "l" | "w" | "tall"; opts?: Record<string, string> }
+export interface WallItem { widget: string; size: "s" | "m" | "l" | "w" | "tall" | "hero"; opts?: Record<string, string> }
 export interface WallScreen {
   dim: { on: boolean; from: string; to: string; level: number };   // level: 0-90 % darker
   wake: { on: boolean; seconds: number };                         // touch wakes a dimmed screen for N s
@@ -71,7 +71,7 @@ function validProfile(p: any): WallProfile {
   if (!p || !Array.isArray(p.layout) || p.layout.length > 60 || typeof p.screen !== "object") throw bad();
   if (p.custom != null && (!Array.isArray(p.custom) || p.custom.length > 60)) throw bad();
   for (const i of [...p.layout, ...(p.custom ?? [])]) {
-    if (typeof i?.widget !== "string" || !/^[a-z0-9-]{1,40}$/.test(i.widget) || !["s", "m", "l", "w", "tall"].includes(i.size)) throw bad();
+    if (typeof i?.widget !== "string" || !/^[a-z0-9-]{1,40}$/.test(i.widget) || !["s", "m", "l", "w", "tall", "hero"].includes(i.size)) throw bad();
     if (i.opts && (typeof i.opts !== "object" || JSON.stringify(i.opts).length > 2000)) throw bad();
   }
   const look = { ...defaultProfile().look, ...(p.look ?? {}) };

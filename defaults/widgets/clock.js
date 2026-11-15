@@ -1,11 +1,11 @@
 // Clock. Edit freely: this file is loaded live by HarborOS.
-// opts.style = "flip" (default) shows flip cards, "plain" shows big digits.
+// opts.style = "plain" (default) shows big digits, "flip" shows flip cards.
 // opts.seconds = "1" shows seconds; opts.h12 = "1" uses a 12-hour clock.
 export default {
   title: "Clock",
-  sizes: ["w", "m", "l", "s"],
+  sizes: ["hero", "w", "m", "l", "s"],
   mount(el, { ui, size, opts }) {
-    return opts.style === "plain" ? plain(el, ui, size, opts) : flip(el, ui, opts);
+    return opts.style === "flip" ? flip(el, ui, opts) : plain(el, ui, size, opts);
   },
 };
 
@@ -16,19 +16,29 @@ function parts(opts) {
 }
 
 function plain(el, ui, size, opts) {
-  el.style.justifyContent = "center";
-  const big = size === "s" ? 40 : size === "m" ? 64 : 96;
-  const time = ui.h("div", { class: "big", style: { fontSize: `${big}px`, letterSpacing: "-0.04em", lineHeight: "1" } });
-  const date = ui.h("div", { class: "k", style: { fontSize: `${Math.max(13, big / 5)}px`, marginTop: "10px" } });
+  // The time fills the tile: thin, tabular digits sized to the space, date underneath.
+  Object.assign(el.style, { justifyContent: "center", alignItems: "flex-start" });
+  const time = ui.h("div", { style: { fontWeight: "200", lineHeight: "0.9", letterSpacing: "-0.055em", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", color: "var(--t1)" } });
+  const date = ui.h("div", { style: { color: "var(--t3)", fontWeight: "400", letterSpacing: "0.01em", whiteSpace: "nowrap" } });
   el.append(time, date);
+  const fit = () => {
+    const chars = (opts.seconds === "1" ? 8 : 5) + (opts.h12 === "1" ? 2 : 0);
+    const W = el.clientWidth, H = el.clientHeight;
+    const fs = Math.max(32, Math.min(H * 0.62, W / (chars * 0.52)));
+    time.style.fontSize = fs + "px";
+    date.style.fontSize = Math.max(13, fs * 0.13) + "px";
+    date.style.marginTop = fs * 0.12 + "px";
+  };
   const tick = () => {
     const { d, ap, p } = parts(opts);
-    time.textContent = p.slice(0, opts.seconds === "1" ? 3 : 2).join(":") + (opts.h12 === "1" ? " " + ap : "");
+    const hm = p.slice(0, opts.seconds === "1" ? 3 : 2);
+    time.innerHTML = hm.join('<span style="color:var(--t4);font-weight:200">:</span>') + (opts.h12 === "1" ? `<span style="font-size:.28em;letter-spacing:0;margin-left:.15em;color:var(--t3)">${ap}</span>` : "");
     date.textContent = d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
   };
-  tick();
+  fit(); tick();
+  const ro = new ResizeObserver(fit); ro.observe(el);
   const t = setInterval(tick, 1000);
-  return { destroy() { clearInterval(t); } };
+  return { destroy() { clearInterval(t); ro.disconnect(); } };
 }
 
 const CSS = `

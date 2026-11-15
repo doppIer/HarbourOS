@@ -6,7 +6,7 @@ import { stats, containers, apps, history, navigate } from "../store";
 import { api, live } from "../lib/ws";
 import { ui } from "./ui";
 
-export type Size = "s" | "m" | "l" | "w" | "tall";
+export type Size = "s" | "m" | "l" | "w" | "tall" | "hero";
 export interface LayoutItem { widget: string; size: Size; opts?: Record<string, string> }
 
 export interface WidgetCtx {

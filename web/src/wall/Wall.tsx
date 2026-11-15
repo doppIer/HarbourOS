@@ -23,21 +23,21 @@ interface Profile { id: string; name: string; layout: LayoutItem[]; screen: Scre
 // Ready-made layouts. The grid has 4 columns: s = 1×1, m = 2×1, l = 2×2, w = 4×1, tall = 1×2.
 interface Preset { id: string; name: string; note: string; header: boolean; items: { widget: string; size: Size }[] }
 const PRESETS: Preset[] = [
-  { id: "home", name: "Home", note: "Greeting, weather, departures, calendar", header: true,
-    items: [{ widget: "weather", size: "m" }, { widget: "bus", size: "m" }, { widget: "calendar", size: "m" }, { widget: "system-summary", size: "m" }] },
+  { id: "home", name: "Home", note: "Big clock up top, then weather, departures, calendar", header: false,
+    items: [{ widget: "clock", size: "hero" }, { widget: "weather", size: "m" }, { widget: "bus", size: "m" }, { widget: "calendar", size: "m" }, { widget: "system-summary", size: "m" }] },
   { id: "agenda", name: "Agenda", note: "Big calendar beside weather and departures", header: false,
     items: [{ widget: "clock", size: "w" }, { widget: "calendar", size: "l" }, { widget: "weather", size: "m" }, { widget: "bus", size: "m" }] },
   { id: "commute", name: "Commute", note: "Departures first, for the hallway", header: true,
-    items: [{ widget: "bus", size: "l" }, { widget: "clock", size: "m" }, { widget: "weather", size: "m" }] },
+    items: [{ widget: "clock", size: "w" }, { widget: "bus", size: "l" }, { widget: "weather", size: "m" }] },
   { id: "clock", name: "Bedside", note: "A big clock and little else", header: false,
-    items: [{ widget: "clock", size: "w" }, { widget: "weather", size: "m" }, { widget: "calendar", size: "m" }] },
+    items: [{ widget: "clock", size: "hero" }, { widget: "weather", size: "m" }, { widget: "calendar", size: "m" }] },
   { id: "server", name: "Server", note: "How the home server is doing", header: true,
     items: [{ widget: "system-summary", size: "w" }, { widget: "system-area", size: "l" }, { widget: "containers-summary", size: "m" }, { widget: "weather", size: "m" }] },
 ];
 const WALL_BGS = [["none", "None"], ["ascii:koi", "Koi"], ["ascii:jellyfish", "Jellyfish"], ["ascii:butterflies", "Butterflies"], ["ascii:cranes", "Cranes"], ["ascii:dragonflies", "Dragonflies"]];
 
-const SIZES: Size[] = ["s", "m", "l", "w", "tall"];
-const SIZE_NAME: Record<Size, string> = { s: "Small", m: "Wide", l: "Large", w: "Full width", tall: "Tall" };
+const SIZES: Size[] = ["s", "m", "l", "w", "tall", "hero"];
+const SIZE_NAME: Record<Size, string> = { s: "Small", m: "Wide", l: "Large", w: "Full width", tall: "Tall", hero: "Hero" };
 
 const mins = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 function isNight(d: Screen["dim"], now = new Date()) {
@@ -274,7 +274,7 @@ const PRETTY: Record<string, string> = {
   clock: "Clock", weather: "Weather", "system-summary": "System", "system-area": "System load chart", cpu: "CPU", memory: "Memory",
   power: "Power", temp: "Temperature", bus: "Bus departures", calendar: "Calendar", network: "Network", disks: "Disks", savings: "Savings", load: "Load", "containers-summary": "Containers",
 };
-const DEFAULT_SIZE: Record<string, Size> = { clock: "w", weather: "m", "system-summary": "m", "system-area": "l", "containers-summary": "tall", bus: "m", calendar: "tall" };
+const DEFAULT_SIZE: Record<string, Size> = { clock: "hero", weather: "m", "system-summary": "m", "system-area": "l", "containers-summary": "tall", bus: "m", calendar: "tall" };
 
 function AddSheet({ close, add }: { close: () => void; add: (i: LayoutItem) => void }) {
   const [list, setList] = useState<string[]>([]);
@@ -320,8 +320,8 @@ const OPTIONS: Record<string, (o: Record<string, string>, set: (o: Record<string
   clock: (o, set) => (
     <>
       <label class="field"><span>Style</span>
-        <select class="input" value={o.style || "flip"} onChange={(e) => set({ ...o, style: e.currentTarget.value })}>
-          <option value="flip">Flip cards</option><option value="plain">Plain digits</option>
+        <select class="input" value={o.style || "plain"} onChange={(e) => set({ ...o, style: e.currentTarget.value })}>
+          <option value="plain">Big digits</option><option value="flip">Flip cards</option>
         </select>
       </label>
       <label class="check"><input type="checkbox" checked={o.seconds === "1"} onChange={(e) => set({ ...o, seconds: e.currentTarget.checked ? "1" : "" })} />Show seconds</label>
