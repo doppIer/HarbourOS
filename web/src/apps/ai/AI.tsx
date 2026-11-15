@@ -165,16 +165,6 @@ function Chat() {
 }
 
 export default function AI() {
-  const [mode, setMode] = useState<"chat" | "code">("chat");
-  return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", gap: 4, padding: "6px 8px", borderBottom: "1px solid var(--line)" }}>
-        <button class={`it ${mode === "chat" ? "on" : ""}`} style={{ width: "auto", height: 28 }} onClick={() => setMode("chat")}><Icon name="solar:chat-round-line-linear" size={15} />Chat</button>
-        <button class={`it ${mode === "code" ? "on" : ""}`} style={{ width: "auto", height: 28 }} onClick={() => setMode("code")}><Icon name="solar:code-square-linear" size={15} />Claude Code</button>
-      </div>
-      <div style={{ flex: 1, position: "relative" }}>
-        {mode === "chat" ? <Chat /> : <TerminalTabs fixed={{ name: "claude", program: "claude" }} />}
-      </div>
-    </div>
-  );
+  // Claude Code running on the host. First open installs it and shows its sign-in.
+  return <div style={{ position: "absolute", inset: 0 }}><TerminalTabs fixed={{ name: "claude", program: "claude" }} /></div>;
 }

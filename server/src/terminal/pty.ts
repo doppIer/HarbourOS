@@ -4,7 +4,7 @@ import { spawn as ptySpawn } from "node-pty";
 import { execFile } from "node:child_process";
 import type { WebSocket } from "ws";
 import { env } from "../env.js";
-import { SSH_HINT } from "../host.js";
+import { q, SSH_HINT } from "../host.js";
 
 const clean = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32) || "main";
 const PREFIX = "harbor-";
@@ -17,10 +17,22 @@ function command(tmuxArgs: string[]): [string, string[]] {
   return ["tmux", tmuxArgs];
 }
 
+// Runs inside the tmux session on the host: installs Claude Code on first use
+// (official installer, into ~/.local/bin), then starts it. The first start shows
+// Claude Code's own sign-in, which works with a claude.ai Pro/Max account.
+const CLAUDE = [
+  'export PATH="$HOME/.local/bin:$PATH"',
+  'if ! command -v claude >/dev/null; then',
+  '  printf "\\033[1mInstalling Claude Code...\\033[0m\\n"',
+  '  curl -fsSL https://claude.ai/install.sh | bash || { printf "\\nInstall failed. Press Enter to close."; read _; exit 1; }',
+  'fi',
+  'while true; do claude; printf "\\nClaude Code exited. Press Enter to start it again."; read _; done',
+].join("\n");
+
 export function attach(ws: WebSocket, name: string, program?: string) {
   const session = PREFIX + clean(name);
   const args = ["new-session", "-A", "-s", session];
-  if (program === "claude") args.push("claude");
+  if (program === "claude") args.push(env.terminalMode === "ssh" ? q(CLAUDE) : CLAUDE);
   const [cmd, argv] = command(args);
   const pty = ptySpawn(cmd, argv, { name: "xterm-256color", cols: 100, rows: 30, env: { ...process.env, TERM: "xterm-256color" } as any });
 

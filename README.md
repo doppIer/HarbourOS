@@ -39,7 +39,7 @@
 | **Live dashboard** | CPU per core, temperature, RAM, swap, disks, network, Tailscale, estimated watts and monthly cost, and how much stopped containers are saving. |
 | **Widgets you edit as files** | Every tile is a small JS file in `data/widgets/`. Save it and the tile reloads in every open browser, with no build or restart. |
 | **Terminal** | xterm.js tabs backed by tmux on the host, so sessions survive closing the browser. iPhone gets an extra key row. |
-| **Claude** | Chat that can read live stats, containers and logs. Anything that changes the server appears as a card you approve first. A second tab runs Claude Code in tmux. |
+| **Claude** | Claude Code running on the server in tmux. The first open installs it and shows its sign-in, so a claude.ai Pro/Max account is enough. Closing the browser doesn't stop it. |
 | **Accounts** | Admin and member roles, sign-up with admin approval, scrypt-hashed passwords, and a forgot-password flow that works without email. Members see the dashboard and open apps; only admins get the terminal, Claude and controls. |
 | **Light on the box it watches** | One Node process (~40 MB idle), one WebSocket per tab, stats collected once and fanned out, slowing to every 30 s when nobody's looking. ~29 KB gzipped main bundle; terminal and Claude load on demand. |
 
@@ -99,7 +99,7 @@ browser ──(Tailscale)──► harbor (Node/Fastify) ──► docker-socket
 On the server, in this folder:
 
 ```bash
-cp .env.example .env              # set TAILSCALE_IP, SESSION_SECRET, ANTHROPIC_API_KEY
+cp .env.example .env              # set TAILSCALE_IP, SESSION_SECRET
 mkdir -p data && cp config/harbor.example.json data/harbor.json   # edit URLs/containers to match yours
 sudo bash host/setup-terminal.sh  # tmux + SSH key for the browser terminal
 sudo bash host/rapl-permissions.sh   # optional, for the power estimate
@@ -234,7 +234,7 @@ Live watts are **an estimate**: Intel RAPL CPU-package power plus a configurable
 
 - **Terminal:** every tab is a `tmux` session on the **host**, reached over SSH with a key only the container has.
 - **Claude chat:** uses `ANTHROPIC_API_KEY` on the server; the key never reaches the browser. The model defaults to `claude-opus-5-5` (change with `CLAUDE_MODEL`). Requests opt into the server-side refusal fallback (`server-side-fallback-2026-07-01`).
-- **Claude Code:** a tmux session running `claude` on the host. Install the CLI for the terminal user and sign in once.
+- **Claude Code:** a tmux session running `claude` on the host as the terminal user. If it's missing, the tab installs it with the official installer (`~/.local/bin`), then Claude Code asks you to sign in once.
 
 ## Security notes
 

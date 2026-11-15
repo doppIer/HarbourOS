@@ -6,7 +6,7 @@ set -euo pipefail
 USER_NAME="${TERMINAL_SSH_USER:-harbor}"
 DATA_DIR="$(pwd)/data"
 
-apt-get install -y tmux openssh-server >/dev/null
+apt-get install -y tmux openssh-server curl >/dev/null
 id "$USER_NAME" >/dev/null 2>&1 || useradd -m -s /bin/bash "$USER_NAME"
 # The app store runs `docker compose` as this user, so it needs the docker group.
 usermod -aG docker "$USER_NAME" || true
@@ -31,4 +31,4 @@ EOF
 chown "$USER_NAME:$USER_NAME" "$HOME_DIR/.tmux.conf"
 
 echo "Done. The container connects as $USER_NAME@host.docker.internal with data/ssh/id_ed25519."
-echo "For the Claude Code tab, install the claude CLI for $USER_NAME and run 'claude' once to sign in."
+echo "The Claude tab installs Claude Code for $USER_NAME on first open and shows its sign-in."
