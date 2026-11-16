@@ -28,11 +28,15 @@ function unzip(buf: Buffer): Map<string, Buffer> {
     const name = buf.toString("utf8", p + 46, p + 46 + nl);
     const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
     const data = buf.subarray(start, start + size);
-    out.set(path.basename(name), method === 8 ? zlib.inflateRawSync(data) : data);
+    const base = path.basename(name);
+    // Only the timetable's .txt files, each with a size cap: a crafted zip can't blow up memory.
+    if (/\.txt$/i.test(base)) out.set(base, method === 8 ? zlib.inflateRawSync(data, { maxOutputLength: MAX_TXT }) : data);
     p += 46 + nl + xl + cl;
   }
   return out;
 }
+
+const MAX_TXT = 400 * 1024 * 1024;
 
 /** CSV rows as objects (handles quotes, BOM, \r\n). */
 function* csv(text: string): Generator<Record<string, string>> {
@@ -94,18 +98,28 @@ function keyFor(cityOrUrl: string) {
   return u.href;
 }
 
-async function feed(cityOrUrl: string): Promise<Feed> {
+async function feed(cityOrUrl: string, role = "admin"): Promise<Feed> {
   const key = keyFor(cityOrUrl);
   const f = feeds.get(key);
+  // A custom timetable link is downloaded by the server: only an admin may add a new one.
+  // Once an admin has loaded it, wall tablets and members can use it.
+  if (!f && role !== "admin" && !CITIES.some((c) => c.id === key) && !fs.existsSync(cacheFile(key))) {
+    throw bad("An admin has to open this timetable once before others can use it.", 403);
+  }
   if (f && Date.now() - f.at < WEEK) return f;
   if (!loading.has(key)) loading.set(key, load(key).finally(() => loading.delete(key)));
   try { return await loading.get(key)!; } catch (e) { if (f) return f; throw e; }
 }
 
+function cacheFile(key: string) {
+  const city = CITIES.some((c) => c.id === key);
+  return path.join(dir, (city ? key : Buffer.from(key).toString("base64url").slice(0, 60)) + ".zip");
+}
+
 async function load(key: string): Promise<Feed> {
   const city = CITIES.find((c) => c.id === key);
   fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, (city ? key : Buffer.from(key).toString("base64url").slice(0, 60)) + ".zip");
+  const file = cacheFile(key);
   let buf: Buffer | null = null;
   const fresh = fs.existsSync(file) && Date.now() - fs.statSync(file).mtimeMs < WEEK;
   if (!fresh) {
@@ -201,7 +215,7 @@ export async function registerTransit(app: FastifyInstance) {
     const { city = "riga", q = "" } = req.query as Record<string, string>;
     const s = norm(String(q).trim());
     if (s.length < 2) return [];
-    const fd = await feed(city);
+    const fd = await feed(city, req.user?.role);
     const out: { name: string; lines: string[] }[] = [];
     for (const [k, ids] of fd.byName) {
       if (!norm(k).includes(s)) continue;
@@ -216,7 +230,7 @@ export async function registerTransit(app: FastifyInstance) {
   // Next departures from every platform with this stop name, for the chosen lines.
   app.get("/api/transit/departures", async (req) => {
     const { city = "riga", stop = "", lines = "", limit = "8" } = req.query as Record<string, string>;
-    const fd = await feed(city);
+    const fd = await feed(city, req.user?.role);
     const want = new Set(String(lines).split(",").map((x) => x.trim()).filter(Boolean));
     // Lines are "bus 3" (or just "3" for any kind with that number).
     const out = departures(fd, String(stop), (r) => !want.size || want.has(r.short) || want.has(lineId(r)));
@@ -225,7 +239,7 @@ export async function registerTransit(app: FastifyInstance) {
 
   // Every line in the city: "bus 25", "tram 11", ...
   app.get("/api/transit/lines", async (req) => {
-    const fd = await feed(String((req.query as any).city ?? "riga"));
+    const fd = await feed(String((req.query as any).city ?? "riga"), req.user?.role);
     const seen = new Map<string, { id: string; kind: string; short: string; name: string; color: string }>();
     for (const r of fd.routes.values()) if (!seen.has(lineId(r))) seen.set(lineId(r), { id: lineId(r), kind: KIND[r.type] ?? "bus", short: r.short, name: r.long, color: r.color ? `#${r.color}` : "" });
     return [...seen.values()].sort((a, b) => a.kind.localeCompare(b.kind) || a.short.localeCompare(b.short, undefined, { numeric: true }));
@@ -234,7 +248,7 @@ export async function registerTransit(app: FastifyInstance) {
   // A line's directions, each with its stops in order (from its longest trip).
   app.get("/api/transit/line", async (req) => {
     const { city = "riga", line = "" } = req.query as Record<string, string>;
-    const fd = await feed(city);
+    const fd = await feed(city, req.user?.role);
     const routeIds = new Set([...fd.routes].filter(([, r]) => lineId(r) === line).map(([id]) => id));
     if (!routeIds.size) throw bad(`No line "${line}" in this timetable.`, 404);
     const tripStops = new Map<string, { seq: number; stop: string }[]>();
@@ -255,7 +269,7 @@ export async function registerTransit(app: FastifyInstance) {
   // Several picks at once: [{ line: "bus 25", to: "Iļģuciems", stop: "Matīsa iela" }, ...]
   app.get("/api/transit/board", async (req) => {
     const { city = "riga", picks = "[]", limit = "3" } = req.query as Record<string, string>;
-    const fd = await feed(city);
+    const fd = await feed(city, req.user?.role);
     let list: { line: string; to?: string; stop: string }[];
     try { list = JSON.parse(String(picks)).slice(0, 12); } catch { throw bad("Bad picks."); }
     return list.map((p) => {
@@ -284,11 +298,19 @@ export async function calendar(raw: string, days: number) {
   if (u.protocol !== "https:" || !CAL_HOSTS.test(u.hostname)) throw bad("That link isn't from a calendar service HarbourOS knows (iCloud, Google, Outlook, Fastmail, Proton).");
   let c = icsCache.get(u.href);
   if (!c || Date.now() - c.at > 10 * 60_000) {
-    const r = await fetch(u, { signal: AbortSignal.timeout(15000), redirect: "follow", headers: { Accept: "text/calendar, */*", "User-Agent": "HarbourOS calendar" } });
+    // Follow redirects by hand so every hop stays on a known calendar host.
+    let r: Response, at = u;
+    for (let hop = 0; ; hop++) {
+      r = await fetch(at, { signal: AbortSignal.timeout(15000), redirect: "manual", headers: { Accept: "text/calendar, */*", "User-Agent": "HarbourOS calendar" } });
+      const loc = r.status >= 300 && r.status < 400 ? r.headers.get("location") : null;
+      if (!loc) break;
+      at = new URL(loc, at);
+      if (hop >= 4 || at.protocol !== "https:" || !CAL_HOSTS.test(at.hostname)) throw bad("The calendar link redirects somewhere HarbourOS doesn't fetch from.", 502);
+    }
     if (!r.ok) throw bad(`The calendar link answered ${r.status}. Is it still shared?`, 502);
     // iCloud sends the file gzipped without saying so (no Content-Encoding).
     let body = Buffer.from(await r.arrayBuffer());
-    if (body[0] === 0x1f && body[1] === 0x8b) body = zlib.gunzipSync(body);
+    if (body[0] === 0x1f && body[1] === 0x8b) body = zlib.gunzipSync(body, { maxOutputLength: 20 * 1024 * 1024 });
     const text = body.toString("utf8");
     if (!text.includes("BEGIN:VCALENDAR")) throw bad("That link didn't return a calendar. Is it still shared as a public calendar?", 502);
     c = { at: Date.now(), text: text.slice(0, 10 * 1024 * 1024) };

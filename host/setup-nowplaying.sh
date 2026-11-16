@@ -37,10 +37,13 @@ IP="$(tailscale ip -4 2>/dev/null | head -n1 || true)"
 URL="http://${IP:-127.0.0.1}:$PORT/api/nowplaying/push"
 curl -s -o /dev/null -m 5 "http://${IP:-127.0.0.1}:$PORT/" || { echo "HarbourOS doesn't answer on ${IP:-127.0.0.1}:$PORT."; exit 1; }
 
-# Readable by the raspotify service user (it only allows posting now-playing info).
-umask 022
+# Readable by root (AirPlay reader) and the raspotify service user only.
+umask 077
 printf 'HARBOUR_URL=%s\nHARBOUR_TOKEN=%s\n' "$URL" "$(tr -d '\n' < "$TOKEN_FILE")" > "$ENVF"
-chmod 644 "$ENVF"
+RS_USER="$(systemctl show -p User --value raspotify 2>/dev/null || true)"
+if [ -n "$RS_USER" ] && id "$RS_USER" >/dev/null 2>&1; then chgrp "$(id -gn "$RS_USER")" "$ENVF"; chmod 640 "$ENVF"
+else chmod 644 "$ENVF"; echo "Note: couldn't find raspotify's user, so $ENVF stays readable by all local users."; fi
+umask 022
 
 # ---------- AirPlay ----------
 if command -v shairport-sync >/dev/null && [ -f "$SP_CONF" ]; then

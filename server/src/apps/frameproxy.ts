@@ -5,10 +5,14 @@
 // WebSockets) to the app, and drops only those two rules from the answers.
 // The Host header is passed through unchanged, so the app sees the address the
 // browser used (it may need that address in its trusted domains).
+// Only signed-in HarbourOS users get through, and HarbourOS's own cookies are
+// removed first: the browser sends them to every port of this host, and the app
+// must never receive the user's HarbourOS session.
 import http from "node:http";
 import net from "node:net";
 import { apps } from "../db.js";
 import type { AppConfig } from "../protocol.js";
+import { userFromCookieHeader, withoutOurCookies } from "../auth.js";
 
 const [lo, hi] = (process.env.FRAME_PORTS ?? "7081-7090").split("-").map(Number);
 const servers = new Map<number, { server: http.Server; target: string }>();
@@ -19,7 +23,14 @@ function stripCsp(v: string) {
 
 function start(port: number, target: URL) {
   const server = http.createServer((req, res) => {
-    const up = http.request({ host: target.hostname, port: target.port || 80, method: req.method, path: req.url, headers: req.headers }, (r) => {
+    if (!userFromCookieHeader(req.headers.cookie)) {
+      res.writeHead(401, { "content-type": "text/plain" });
+      res.end("Sign in to HarbourOS first.");
+      return;
+    }
+    const headers = { ...req.headers, cookie: withoutOurCookies(req.headers.cookie) };
+    if (!headers.cookie) delete headers.cookie;
+    const up = http.request({ host: target.hostname, port: target.port || 80, method: req.method, path: req.url, headers }, (r) => {
       const h = { ...r.headers };
       delete h["x-frame-options"];
       for (const k of ["content-security-policy", "content-security-policy-report-only"]) if (typeof h[k] === "string") h[k] = stripCsp(h[k] as string);
@@ -30,8 +41,11 @@ function start(port: number, target: URL) {
     req.pipe(up);
   });
   server.on("upgrade", (req, sock, head) => {
+    if (!userFromCookieHeader(req.headers.cookie)) { sock.end("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n"); return; }
+    const headers: Record<string, unknown> = { ...req.headers, cookie: withoutOurCookies(req.headers.cookie) };
+    if (!headers.cookie) delete headers.cookie;
     const up = net.connect(Number(target.port || 80), target.hostname, () => {
-      up.write(`${req.method} ${req.url} HTTP/1.1\r\n` + Object.entries(req.headers).map(([k, v]) => `${k}: ${v}`).join("\r\n") + "\r\n\r\n");
+      up.write(`${req.method} ${req.url} HTTP/1.1\r\n` + Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join("\r\n") + "\r\n\r\n");
       if (head.length) up.write(head);
       sock.pipe(up).pipe(sock);
     });

@@ -5,6 +5,7 @@
 // The first account created becomes admin. Later sign-ups (if enabled in
 // Settings) wait as "pending" until an admin approves them.
 import crypto from "node:crypto";
+import fastifyCookie from "@fastify/cookie";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db, settings } from "./db.js";
 import { env } from "./env.js";
@@ -23,8 +24,24 @@ const attempts = new Map<string, { n: number; until: number }>();
 function limited(ip: string) { const a = attempts.get(ip); return !!a && a.until > Date.now(); }
 function fail(ip: string) { const n = (attempts.get(ip)?.n ?? 0) + 1; attempts.set(ip, { n, until: n >= 5 ? Date.now() + 60_000 : 0 }); }
 
+/** Origin header names this same host (direct, or through a proxy that sets X-Forwarded-Host). */
+function sameOrigin(origin: string, req: FastifyRequest): boolean {
+  let host: string;
+  try { host = new URL(origin).host.toLowerCase(); } catch { return false; }
+  const hosts = [req.headers.host, req.headers["x-forwarded-host"]].flatMap((h) => (typeof h === "string" ? h.split(",") : [])).map((h) => h.trim().toLowerCase());
+  return hosts.includes(host);
+}
+
+/** Tailscale Serve on this machine reaches us from loopback or the Docker bridge, never from a tailnet or LAN address. */
+function fromLocalProxy(req: FastifyRequest): boolean {
+  const a = (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
+  return a === "::1" || /^127\./.test(a) || /^172\.(1[6-9]|2\d|3[01])\./.test(a);
+}
+
 function resolveUser(req: FastifyRequest): { user: User | null; token: string | null } {
-  if (env.trustTailscale) {
+  // The header is only trustworthy when Tailscale Serve set it; anyone connecting
+  // straight to the port could send it themselves.
+  if (env.trustTailscale && fromLocalProxy(req)) {
     const login = req.headers["tailscale-user-login"];
     if (typeof login === "string" && (env.tailscaleUsers.length === 0 || env.tailscaleUsers.includes(login))) {
       const u = users.byEmail(login);
@@ -39,6 +56,24 @@ function resolveUser(req: FastifyRequest): { user: User | null; token: string | 
   if (!row || Date.now() - row.created > MAX_AGE * 1000) return { user: deviceUser(req), token: null };
   const u = users.get(row.user_id);
   return { user: u?.status === "active" ? u : null, token: un.value };
+}
+
+/** Who a raw Cookie header belongs to, for listeners outside Fastify (the frame proxy). */
+export function userFromCookieHeader(header: string | undefined): User | null {
+  const cookies: Record<string, string> = {};
+  for (const part of (header ?? "").split(";")) {
+    const i = part.indexOf("=");
+    if (i > 0) { try { cookies[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); } catch {} }
+  }
+  const fake = { cookies, unsignCookie: (v: string) => fastifyCookie.unsign(v, env.sessionSecret), headers: {}, socket: {} } as unknown as FastifyRequest;
+  return resolveUser(fake).user;
+}
+
+/** Cookie header without HarbourOS's own cookies, so a proxied app never sees them. */
+export function withoutOurCookies(header: string | undefined): string | undefined {
+  if (!header) return header;
+  const rest = header.split(";").map((c) => c.trim()).filter((c) => c && !/^harbor_(session|device)=/.test(c));
+  return rest.length ? rest.join("; ") : undefined;
 }
 
 function startSession(reply: FastifyReply, user: User) {
@@ -155,9 +190,24 @@ export async function registerAuth(app: FastifyInstance) {
   });
 
   app.addHook("onRequest", async (req: FastifyRequest, reply: FastifyReply) => {
-    const url = req.url.split("?")[0];
-    const guarded = url.startsWith("/api/") || url.startsWith("/ws") || url.startsWith("/widgets/") || url.startsWith("/user-");
-    if (!guarded || PUBLIC.has(url)) return;
+    // Check the path the router will actually run. The raw URL can be percent-encoded
+    // ("/%61pi/files" routes to "/api/files"), so never decide on it alone: use the
+    // matched route pattern, and the decoded path for unmatched requests.
+    let decoded: string;
+    try { decoded = decodeURIComponent(req.url.split("?")[0]); } catch { return reply.code(400).send({ error: "Bad URL." }); }
+    const route = req.routeOptions?.url;
+    const url = route && route !== "*" && route !== "/*" ? route : decoded;
+    const isGuarded = (p: string) => p.startsWith("/api/") || p.startsWith("/ws") || p.startsWith("/widgets/") || p.startsWith("/user-");
+    const guarded = isGuarded(url) || isGuarded(decoded);
+    // /api/me is public only for reading who you are; changing your name needs a session.
+    const isPublic = PUBLIC.has(url) && PUBLIC.has(decoded) && !(url === "/api/me" && req.method !== "GET");
+    if (!guarded || isPublic) return;
+    // Cross-site WebSockets aren't covered by CORS or SameSite=Strict (other ports on
+    // this host are the same site): only accept them from HarbourOS's own page.
+    const origin = req.headers.origin;
+    if (origin && (url.startsWith("/ws") || req.method !== "GET") && !sameOrigin(origin, req)) {
+      return reply.code(403).send({ error: "Cross-origin request refused." });
+    }
     const { user, token } = resolveUser(req);
     if (!user) return reply.code(401).send({ error: "Sign in first." });
     req.user = user;
