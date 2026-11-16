@@ -27,6 +27,7 @@ const sha = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 export interface WallItem { widget: string; size: "s" | "m" | "l" | "w" | "tall" | "hero"; opts?: Record<string, string> }
 export interface WallScreen {
   dim: { on: boolean; from: string; to: string; level: number };   // level: 0-90 % darker
+  red: { on: boolean; from: string; to: string };                 // night mode: everything in red, easy on the eyes
   wake: { on: boolean; seconds: number };                         // touch wakes a dimmed screen for N s
   shift: { on: boolean; minutes: number; px: number };            // burn-in: nudge content
   saver: { on: boolean; minutes: number; style: "clock" | "black" };
@@ -43,6 +44,7 @@ export const defaultProfile = (): WallProfile => ({
   ],
   screen: {
     dim: { on: true, from: "23:00", to: "07:00", level: 70 },
+    red: { on: true, from: "00:00", to: "06:00" },
     wake: { on: true, seconds: 30 },
     shift: { on: true, minutes: 5, px: 4 },
     saver: { on: false, minutes: 10, style: "clock" },

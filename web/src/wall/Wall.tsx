@@ -15,6 +15,7 @@ import { Stage, useStage, watchNowPlaying, np } from "./Stage";
 
 export interface Screen {
   dim: { on: boolean; from: string; to: string; level: number };
+  red: { on: boolean; from: string; to: string };
   wake: { on: boolean; seconds: number };
   shift: { on: boolean; minutes: number; px: number };
   saver: { on: boolean; minutes: number; style: "clock" | "black" };
@@ -43,7 +44,7 @@ const SIZES: Size[] = ["s", "m", "l", "w", "tall", "hero"];
 const SIZE_NAME: Record<Size, string> = { s: "Small", m: "Wide", l: "Large", w: "Full width", tall: "Tall", hero: "Hero" };
 
 const mins = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
-function isNight(d: Screen["dim"], now = new Date()) {
+function isNight(d: { from: string; to: string }, now = new Date()) {
   const t = now.getHours() * 60 + now.getMinutes(), a = mins(d.from), b = mins(d.to);
   return a <= b ? t >= a && t < b : t >= a || t < b;
 }
@@ -161,6 +162,7 @@ export function Wall() {
           onChange={(opts) => { const l = [...p.layout]; l[sheet.opts] = { ...l[sheet.opts], opts }; setLayout(l); }} />
       )}
 
+      {fx.red && <div class="wall-red" aria-hidden="true" />}
       {fx.dim > 0 && !stage.open && <div class="wall-dim" style={{ opacity: fx.dim / 100, pointerEvents: p.screen.wake.on ? "auto" : "none" }} />}
       {fx.saver && !stage.open && <Saver style={p.screen.saver.style} />}
     </div>
@@ -261,6 +263,8 @@ function useScreen(s?: Screen) {
 
   const awake = now < awakeUntil.current;
   const dim = s?.dim.on && isNight(s.dim) && !awake ? s.dim.level : 0;
+  // Night mode: red stays on even when touched; it's about the light, not sleep.
+  const red = !!s?.red?.on && isNight(s.red);
   const saver = !!s?.saver.on && now - last.current > s.saver.minutes * 60_000;
 
   const touch = (e: PointerEvent) => {
@@ -270,7 +274,7 @@ function useScreen(s?: Screen) {
     if (wasSaver || wasDim) { e.stopPropagation(); e.preventDefault(); }
     setNow(Date.now());
   };
-  return { dim, saver, shift, touch, wakeLock };
+  return { dim, saver, shift, touch, wakeLock, red };
 }
 
 function Saver({ style }: { style: "clock" | "black" }) {
@@ -505,6 +509,14 @@ function ScreenSheet({ screen, look, onLook, wakeLock, close, onChange }: { scre
           </select>
         </div>
         {l.background !== "none" && <div class="dim" style={{ fontSize: 12 }}>ASCII animals: <a href={ASCII_CREDIT.url} target="_blank" rel="noopener">{ASCII_CREDIT.name}</a> (MIT)</div>}
+      </div>
+
+      <div class="wall-group">
+        <label class="check"><input type="checkbox" checked={!!s.red?.on} onChange={(e) => set("red", { on: e.currentTarget.checked })} /><b>Night mode</b> <span class="dim">everything in red, easy on the eyes</span></label>
+        <div class="wall-row" aria-disabled={!s.red?.on}>
+          From <input class="input" type="time" value={s.red?.from ?? "00:00"} disabled={!s.red?.on} onChange={(e) => set("red", { from: e.currentTarget.value })} />
+          to <input class="input" type="time" value={s.red?.to ?? "06:00"} disabled={!s.red?.on} onChange={(e) => set("red", { to: e.currentTarget.value })} />
+        </div>
       </div>
 
       <div class="wall-group">

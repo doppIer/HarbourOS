@@ -601,3 +601,8 @@ a.it, a.btn { text-decoration: none; }
    blurred layer is redrawn every frame), and nothing drawn under the stage. */
 .wall :is(.wall-cell > .tile, .wall-rail, .np, .dj-deck, .np-mini, .dj-search, .seg, .dj-cover, .dj-bar .btn) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 .wall.staged :is(.wall-inner, .wall-section, .wall-rail, .np) { visibility: hidden; transition: visibility 0s .7s; }
+
+/* Night mode: grey everything, then multiply by red, so only red light is left.
+   No blur, so it costs little even over the moving background. */
+.wall-red { position: absolute; inset: 0; z-index: 60; pointer-events: none; background: #ff1f0f; mix-blend-mode: multiply;
+  -webkit-backdrop-filter: grayscale(1) contrast(1.1); backdrop-filter: grayscale(1) contrast(1.1); animation: fade 2s ease; }
