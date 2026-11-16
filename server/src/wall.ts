@@ -27,7 +27,7 @@ const sha = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 export interface WallItem { widget: string; size: "s" | "m" | "l" | "w" | "tall" | "hero"; opts?: Record<string, string> }
 export interface WallScreen {
   dim: { on: boolean; from: string; to: string; level: number };   // level: 0-90 % darker
-  red: { on: boolean; from: string; to: string };                 // night mode: everything in red, easy on the eyes
+  red: { on: boolean; from: string; to: string; clock?: "digits" | "analog" }; // night mode: everything in red, easy on the eyes
   wake: { on: boolean; seconds: number };                         // touch wakes a dimmed screen for N s
   shift: { on: boolean; minutes: number; px: number };            // burn-in: nudge content
   saver: { on: boolean; minutes: number; style: "clock" | "black" };

@@ -16,7 +16,7 @@ import { Night } from "./Night";
 
 export interface Screen {
   dim: { on: boolean; from: string; to: string; level: number };
-  red: { on: boolean; from: string; to: string };
+  red: { on: boolean; from: string; to: string; clock?: "digits" | "analog" };
   wake: { on: boolean; seconds: number };
   shift: { on: boolean; minutes: number; px: number };
   saver: { on: boolean; minutes: number; style: "clock" | "black" };
@@ -154,7 +154,7 @@ export function Wall() {
           <span class="np-eq"><i /><i /><i /></span>{np.value.title}<span class="dim"> · {np.value.artist}</span>
         </button>
       )}
-      {night && <Night onPeek={() => setPeekUntil(Date.now() + Math.max(15, p.screen.wake.seconds) * 1000)} />}
+      {night && <Night face={p.screen.red?.clock === "analog"} onPeek={() => setPeekUntil(Date.now() + Math.max(15, p.screen.wake.seconds) * 1000)} />}
       <Stage open={stage.open} onClose={stage.dismiss} />
 
       {open && (
@@ -526,6 +526,11 @@ function ScreenSheet({ screen, look, onLook, wakeLock, close, onChange }: { scre
         <div class="wall-row" aria-disabled={!s.red?.on}>
           From <input class="input" type="time" value={s.red?.from ?? "00:00"} disabled={!s.red?.on} onChange={(e) => set("red", { from: e.currentTarget.value })} />
           to <input class="input" type="time" value={s.red?.to ?? "06:00"} disabled={!s.red?.on} onChange={(e) => set("red", { to: e.currentTarget.value })} />
+        </div>
+        <div class="wall-row" aria-disabled={!s.red?.on}>Clock
+          <select class="input" value={s.red?.clock ?? "digits"} disabled={!s.red?.on} onChange={(e) => set("red", { clock: e.currentTarget.value as "digits" | "analog" })}>
+            <option value="digits">Big digits</option><option value="analog">Watch face</option>
+          </select>
         </div>
       </div>
 

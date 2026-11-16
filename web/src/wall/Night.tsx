@@ -19,10 +19,11 @@ const WMO: Record<number, [string, string, string?]> = {
   95: ["Thunderstorm", "cloud-bolt-linear"], 96: ["Thunderstorm", "cloud-bolt-linear"], 99: ["Thunderstorm", "cloud-bolt-linear"],
 };
 
-export function Night({ onPeek }: { onPeek: () => void }) {
+export function Night({ onPeek, face = false }: { onPeek: () => void; face?: boolean }) {
   const [now, setNow] = useState(new Date());
   const [wx, setWx] = useState<any>(null);
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 10_000); return () => clearInterval(t); }, []);
+  // The watch face has a seconds hand, so it ticks every second.
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), face ? 1000 : 10_000); return () => clearInterval(t); }, [face]);
   useEffect(() => {
     const load = () => api<any>("/api/weather").then(setWx).catch(() => {});
     load(); const t = setInterval(load, 15 * 60_000); return () => clearInterval(t);
@@ -36,7 +37,7 @@ export function Night({ onPeek }: { onPeek: () => void }) {
 
   return (
     <div class="night" onClick={onPeek} role="button" aria-label="Show the tiles for a moment">
-      <div class="night-clock" aria-label={`${hh}:${mm}`}>{hh}<span class="night-colon">:</span>{mm}</div>
+      {face ? <Face now={now} /> : <div class="night-clock" aria-label={`${hh}:${mm}`}>{hh}<span class="night-colon">:</span>{mm}</div>}
       <div class="night-date">{now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</div>
       {c && (
         <div class="night-wx">
@@ -48,6 +49,43 @@ export function Night({ onPeek }: { onPeek: () => void }) {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+/** The same watch face as the clock tile's "Watch face" style. */
+const at = (deg: number, r: number) => { const a = (deg - 90) * Math.PI / 180; return [Math.cos(a) * r, Math.sin(a) * r]; };
+const MARKS = Array.from({ length: 60 }, (_, i) => {
+  const deg = i * 6;
+  if (i % 5) { const [x1, y1] = at(deg, 79), [x2, y2] = at(deg, 84); return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,.45)" stroke-width="1" stroke-linecap="round" />; }
+  const [x1, y1] = at(deg, 74), [x2, y2] = at(deg, 85), [hx, hy] = at(deg, 60), flip = deg > 90 && deg < 270;
+  return (
+    <g key={i}>
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,.7)" stroke-width="3.2" stroke-linecap="round" />
+      <text transform={`rotate(${flip ? deg + 180 : deg}) translate(0 ${flip ? 95 : -92})`} text-anchor="middle" dominant-baseline="middle" font-size="7" letter-spacing=".4" fill="rgba(255,255,255,.5)">{String(i === 0 ? 60 : i).padStart(2, "0")}</text>
+      <text x={hx} y={hy} text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="500" fill="#fff">{i === 0 ? 12 : i / 5}</text>
+    </g>
+  );
+});
+function Hand({ len, w, deg }: { len: number; w: number; deg: number }) {
+  return (
+    <g transform={`rotate(${deg})`}>
+      <line x1="0" y1="4" x2="0" y2={-len} stroke="rgba(255,255,255,.85)" stroke-width={w} stroke-linecap="round" />
+      <line x1="0" y1="4" x2="0" y2={-len * 0.28} stroke="rgba(255,255,255,.85)" stroke-width={w * 1.9} stroke-linecap="round" />
+    </g>
+  );
+}
+function Face({ now }: { now: Date }) {
+  const sec = now.getSeconds(), min = now.getMinutes() + sec / 60, hr = (now.getHours() % 12) + min / 60;
+  return (
+    <div class="night-face" aria-label={now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}>
+      <svg viewBox="-100 -100 200 200">
+        {MARKS}
+        <Hand len={42} w={2.6} deg={hr * 30} />
+        <Hand len={74} w={2} deg={min * 6} />
+        <g transform={`rotate(${sec * 6})`}><line x1="0" y1="18" x2="0" y2="-80" stroke="rgba(255,255,255,.8)" stroke-width=".9" stroke-linecap="round" /></g>
+        <circle r="3.4" fill="rgba(255,255,255,.9)" /><circle r="1.4" fill="#000" />
+      </svg>
     </div>
   );
 }
