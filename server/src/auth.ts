@@ -8,7 +8,7 @@ import crypto from "node:crypto";
 import fastifyCookie from "@fastify/cookie";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db, settings } from "./db.js";
-import { env } from "./env.js";
+import { env, isTrustedProxy } from "./env.js";
 import { deviceUser } from "./wall.js";
 import { resets, users, validEmail, validPassword, type User } from "./users.js";
 
@@ -35,10 +35,7 @@ function sameOrigin(origin: string, req: FastifyRequest): boolean {
 }
 
 /** Tailscale Serve on this machine reaches us from loopback or the Docker bridge, never from a tailnet or LAN address. */
-function fromLocalProxy(req: FastifyRequest): boolean {
-  const a = (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
-  return a === "::1" || /^127\./.test(a) || /^172\.(1[6-9]|2\d|3[01])\./.test(a);
-}
+function fromLocalProxy(req: FastifyRequest): boolean { return isTrustedProxy(req.socket?.remoteAddress); }
 
 function resolveUser(req: FastifyRequest): { user: User | null; token: string | null } {
   // The header is only trustworthy when Tailscale Serve set it; anyone connecting
@@ -85,20 +82,23 @@ function startSession(reply: FastifyReply, user: User) {
 }
 
 /** What a member may call. Everything else needs admin. */
-function memberAllowed(method: string, url: string, role: string): boolean {
+function memberAllowed(method: string, url: string, role: string, decoded = url): boolean {
   const p = url.split("?")[0];
+  // Opening an app: one route serves open/activity/stop/restart (/api/apps/:id/:op), so look at the real path.
+  const openApp = method === "POST" && /^\/api\/apps\/[^/]+\/(open|activity)$/.test(decoded) && (p === "/api/apps/:id/:op" || p === decoded);
+  if (p === "/api/music/test") return false; // makes the server contact Navidrome
   if (p === "/api/nowplaying/status") return false; // setup details are for admins
   // Wall screen: members and paired tablets.
   if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather" || p === "/api/calendar" || p.startsWith("/api/transit/") || p.startsWith("/api/music/") || p.startsWith("/api/nowplaying"))) return true;
   if (method === "PUT" && p === "/api/wall/profile") return true;
   if (method === "POST" && (p === "/api/nowplaying/control" || p === "/api/nowplaying/volume")) return true;
   if (role === "device") return (method === "GET" && ["/ws", "/api/apps", "/api/containers", "/api/settings", "/api/widgets"].includes(p))
-    || (method === "POST" && /^\/api\/apps\/[^/]+\/(open|activity)$/.test(p));
+    || openApp;
   if (method === "GET") {
     return p === "/ws" || p === "/api/apps" || p === "/api/containers" || p === "/api/settings" ||
       p === "/api/widgets" || p === "/api/backgrounds";
   }
-  if (method === "POST") return /^\/api\/apps\/[^/]+\/(open|activity)$/.test(p);
+  if (method === "POST") return openApp;
   if (method === "PUT") return p === "/api/me" || p === "/api/me/password";
   return false;
 }
@@ -217,7 +217,8 @@ export async function registerAuth(app: FastifyInstance) {
     if (!user) return reply.code(401).send({ error: "Sign in first." });
     req.user = user;
     req.sessionToken = token;
-    if (user.role !== "admin" && !url.startsWith("/widgets/") && !url.startsWith("/user-") && !memberAllowed(req.method, url, user.role)) {
+    const readOnlyShared = (req.method === "GET" || req.method === "HEAD") && (url.startsWith("/widgets/") || url.startsWith("/user-"));
+    if (user.role !== "admin" && !readOnlyShared && !memberAllowed(req.method, url, user.role, decoded)) {
       return reply.code(403).send({ error: "Only an admin can do that." });
     }
   });

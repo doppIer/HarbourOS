@@ -57,11 +57,12 @@ export const profiles = {
   get(id: string): WallProfile {
     const r: any = db.prepare("SELECT json FROM wall_profiles WHERE id=?").get(id);
     const d = defaultProfile();
-    if (!r) return d;
+    if (!r) return id.startsWith("user:") ? profiles.get("default") : d;
     const p = JSON.parse(r.json);
     return { layout: p.layout ?? d.layout, screen: deepMerge(d.screen, p.screen ?? {}), look: { ...d.look, ...(p.look ?? {}) }, custom: p.custom };
   },
   put(id: string, p: WallProfile) { db.prepare("INSERT OR REPLACE INTO wall_profiles(id,json) VALUES(?,?)").run(id, JSON.stringify(p)); },
+  remove(id: string) { db.prepare("DELETE FROM wall_profiles WHERE id=?").run(id); },
 };
 function deepMerge<T>(a: T, b: any): T {
   const o: any = { ...a };
@@ -94,7 +95,9 @@ export function deviceUser(req: FastifyRequest): User | null {
   db.prepare("UPDATE devices SET last_seen=? WHERE id=?").run(Date.now(), d.id);
   return { id: `device:${d.id}`, email: "", name: d.name, role: "device", status: "active", created: d.created };
 }
-const profileId = (u: User | null) => (u?.role === "device" ? u.id : "default");
+// Each tablet and each signed-in user has a wall of their own. "default" is the
+// old shared wall: it is now only the starting point for users who have none yet.
+const profileId = (u: User | null) => (u?.role === "device" ? u.id : u ? `user:${u.id}` : "default");
 
 // ---------- weather (Open-Meteo, no key) ----------
 interface Place { name: string; lat: number; lon: number }

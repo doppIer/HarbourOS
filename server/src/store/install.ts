@@ -99,9 +99,17 @@ export function render(app: StoreApp, o: InstallOptions): Rendered {
     if (Array.isArray(s.volumes)) {
       s.volumes = s.volumes.map((v: any) => {
         const src: string | undefined = typeof v === "string" ? v.split(":")[0] : v?.type === "bind" ? v.source : undefined;
-        if (typeof src !== "string" || !src.startsWith("/")) return v;
-        const m = mapPath(src);
-        const ours = m !== src; // under the data or media folder: create it if missing
+        if (typeof src !== "string") return v;
+        // Relative (./, ../) or home (~) sources resolve against the stack folder on the host: they can reach anywhere.
+        if (!src.startsWith("/")) {
+          if (/^(\.|~)/.test(src)) { risks.push(`${name} mounts ${src} (a path relative to its install folder) from the host.`); mounts.push(src); }
+          return v;
+        }
+        // Normalise so "/DATA/AppData/../../etc" can't pass as our data folder.
+        const m = path.posix.normalize(mapPath(src));
+        const under = (root: string) => { const r = path.posix.normalize(root.replace(/\/$/, "")); return m === r || m.startsWith(r + "/"); };
+        const ours = m !== path.posix.normalize(src) && (under(o.dataRoot) || under(o.mediaRoot)); // under the data or media folder: create it if missing
+        if (m !== path.posix.normalize(src) && !ours) risks.push(`${name} mounts ${m}, outside the app data and media folders.`);
         // Host paths the catalog assumes but this machine lacks (e.g. Raspberry Pi /opt/vc/lib).
         if (!ours && !fs.existsSync(path.join(env.hostRoot, src))) { notes.push(`Removed mount ${src} (${name}): not present on this host.`); return null; }
         mounts.push(m); flagMount(m, name, risks);
@@ -122,11 +130,22 @@ export function render(app: StoreApp, o: InstallOptions): Rendered {
     if (s.privileged) risks.push(`${name} runs privileged (full access to the host).`);
     if (s.network_mode === "host") risks.push(`${name} uses the host network.`);
     if (s.pid === "host") risks.push(`${name} shares the host process namespace.`);
-    if (Array.isArray(s.cap_add) && s.cap_add.length) notes.push(`${name} adds capabilities: ${s.cap_add.join(", ")}.`);
+    if (Array.isArray(s.cap_add) && s.cap_add.length) {
+      const strong = s.cap_add.filter((c: string) => /^(CAP_)?(ALL|SYS_ADMIN|SYS_MODULE|SYS_PTRACE|SYS_RAWIO|DAC_READ_SEARCH|NET_ADMIN|SYS_BOOT)$/i.test(String(c)));
+      (strong.length ? risks : notes).push(`${name} adds capabilities: ${s.cap_add.join(", ")}.`);
+    }
+    for (const opt of Array.isArray(s.security_opt) ? s.security_opt : []) if (/unconfined/i.test(String(opt))) risks.push(`${name} turns off a security profile (${opt}).`);
+    if (s.ipc === "host" || s.userns_mode === "host" || s.uts === "host") risks.push(`${name} shares a host namespace.`);
     // label so we can find what the store installed
     const label = { "harbor.store": app.id };
     if (Array.isArray(s.labels)) s.labels.push(`harbor.store=${app.id}`);
     else s.labels = { ...(s.labels ?? {}), ...label };
+  }
+
+  // Named volumes can secretly be host folders (driver_opts o: bind, device: /path).
+  for (const [vn, vol] of Object.entries<any>(doc.volumes ?? {})) {
+    const d = vol?.driver_opts;
+    if (d && (/bind/.test(String(d.o ?? "")) || d.type === "none") && d.device) { risks.push(`Volume ${vn} is the host folder ${d.device}.`); mounts.push(String(d.device)); }
   }
 
   const envFile = [

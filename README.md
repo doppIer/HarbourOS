@@ -244,14 +244,16 @@ Live watts are **an estimate**: Intel RAPL CPU-package power plus a configurable
 - The web container never sees the Docker socket; exec, images, volumes, networks and build stay disabled in the proxy.
 - Every `/api` and `/ws` route requires a session, checked against the route that will actually run (encoded paths can't slip past). Members get a 403 on admin routes. Login and sign-up are rate-limited; session cookies are signed, `HttpOnly` and `SameSite=Strict`.
 - Writes and WebSockets from another origin are refused, so a page on another port of the same machine can't use your session (for example to open the terminal).
-- `X-Forwarded-*` and Tailscale identity headers are only believed from a proxy on the same machine (Tailscale Serve). Don't put HarbourOS behind another reverse proxy on a different host without checking this.
+- `X-Forwarded-*` and Tailscale identity headers are only believed from a proxy on the same machine (Tailscale Serve), never from other containers or tailnet devices.
 - Apps shown through the frame proxy (ports 7081-7090) need a HarbourOS session, and never receive HarbourOS's own cookies.
 - Members and wall tablets can only use timetable (GTFS) links an admin has opened once; the server never downloads a new link for them.
 - Password reset codes from "Forgot password" are written to the container log (`docker compose logs harbor`). Anyone who can read that log can reset accounts.
 - Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin` and `frame-ancestors 'self'`.
 - Until the first account exists, anyone who can reach port 7080 can create the admin. Set it up right after `docker compose up`, or set `HARBOR_PASSWORD` in `.env`.
 - `/proc`, `/sys` and `/` are mounted read-only; `/` is used only for disk usage numbers.
-- The terminal is a full shell on your host. Give admin only to people you'd give SSH access.
+- The terminal is a full shell on your host, and its user (`harbor`) is in the `docker` group so the app store can run `docker compose`: in practice that's root on the host. Give admin only to people you'd give root.
+- The forwarded-header rule above trusts loopback and the server's own `TAILSCALE_IP` (where Tailscale Serve connects from). Add any other proxy in front of HarbourOS to `TRUSTED_PROXIES`.
+- Each signed-in user and each paired tablet has a wall layout of its own.
 
 ## Development
 

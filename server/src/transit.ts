@@ -289,6 +289,24 @@ export async function registerTransit(app: FastifyInstance) {
 
 // ---------------- iCalendar ----------------
 const icsCache = new Map<string, { at: number; text: string }>();
+const CAL_MAX = 10 * 1024 * 1024, CAL_CACHE_MAX = 24 * 1024 * 1024;
+/** Read at most `max` bytes of a response, aborting past that. */
+async function readCapped(r: Response, max: number): Promise<Buffer> {
+  if (Number(r.headers.get("content-length") ?? 0) > max) throw bad("That calendar is too big.", 502);
+  const chunks: Buffer[] = []; let n = 0;
+  for await (const ch of r.body as any as AsyncIterable<Uint8Array>) {
+    n += ch.length;
+    if (n > max) { throw bad("That calendar is too big.", 502); }
+    chunks.push(Buffer.from(ch));
+  }
+  return Buffer.concat(chunks);
+}
+/** Keep the calendar cache under CAL_CACHE_MAX bytes, dropping the oldest first. */
+function trimIcsCache() {
+  let total = 0;
+  for (const v of icsCache.values()) total += v.text.length;
+  for (const [k, v] of icsCache) { if (total <= CAL_CACHE_MAX) break; total -= v.text.length; icsCache.delete(k); }
+}
 // Only calendar services, so this can't be used to poke at other machines.
 const CAL_HOSTS = /(^|\.)(icloud\.com|google\.com|outlook\.com|office365\.com|live\.com|fastmail\.com|proton\.me)$/i;
 
@@ -296,6 +314,7 @@ export async function calendar(raw: string, days: number) {
   let u: URL;
   try { u = new URL(raw.trim().replace(/^webcals?:\/\//i, "https://")); } catch { throw bad("Paste the calendar's share link (webcal://… or https://…)."); }
   if (u.protocol !== "https:" || !CAL_HOSTS.test(u.hostname)) throw bad("That link isn't from a calendar service HarbourOS knows (iCloud, Google, Outlook, Fastmail, Proton).");
+  u.hash = "";
   let c = icsCache.get(u.href);
   if (!c || Date.now() - c.at > 10 * 60_000) {
     // Follow redirects by hand so every hop stays on a known calendar host.
@@ -309,12 +328,12 @@ export async function calendar(raw: string, days: number) {
     }
     if (!r.ok) throw bad(`The calendar link answered ${r.status}. Is it still shared?`, 502);
     // iCloud sends the file gzipped without saying so (no Content-Encoding).
-    let body = Buffer.from(await r.arrayBuffer());
+    let body = await readCapped(r, CAL_MAX);
     if (body[0] === 0x1f && body[1] === 0x8b) body = zlib.gunzipSync(body, { maxOutputLength: 20 * 1024 * 1024 });
     const text = body.toString("utf8");
     if (!text.includes("BEGIN:VCALENDAR")) throw bad("That link didn't return a calendar. Is it still shared as a public calendar?", 502);
     c = { at: Date.now(), text: text.slice(0, 10 * 1024 * 1024) };
-    icsCache.set(u.href, c);
+    icsCache.delete(u.href); icsCache.set(u.href, c); trimIcsCache();
   }
   return expand(c.text, days);
 }

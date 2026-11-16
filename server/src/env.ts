@@ -14,6 +14,8 @@ export const env = {
   password: e.HARBOR_PASSWORD ?? "",
   sessionSecret: "",
   trustTailscale: e.TRUST_TAILSCALE_HEADERS === "1",
+  tailscaleIp: (e.TAILSCALE_IP ?? "").trim(),
+  trustedProxies: (e.TRUSTED_PROXIES ?? "").split(",").map((s) => s.trim()).filter(Boolean),
   tailscaleUsers: (e.TAILSCALE_ALLOWED_USERS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
   claudeModel: e.CLAUDE_MODEL ?? "claude-opus-5-5",
   terminalMode: (e.TERMINAL_MODE ?? "local") as "ssh" | "local",
@@ -44,4 +46,13 @@ else {
     fs.mkdirSync(env.dataDir, { recursive: true });
     fs.writeFileSync(file, env.sessionSecret + "\n", { mode: 0o600 });
   }
+}
+
+/** A peer whose X-Forwarded-* and Tailscale headers we believe: loopback, this
+ *  machine's own Tailscale address (what Tailscale Serve connects from: nobody
+ *  else on the tailnet can use it) and any address listed in TRUSTED_PROXIES.
+ *  Not whole Docker ranges: other containers live there. */
+export function isTrustedProxy(addr: string | undefined): boolean {
+  const a = (addr ?? "").replace(/^::ffff:/, "");
+  return a === "::1" || /^127\./.test(a) || (!!env.tailscaleIp && a === env.tailscaleIp) || env.trustedProxies.includes(a);
 }

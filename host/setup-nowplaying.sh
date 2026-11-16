@@ -33,13 +33,17 @@ fi
 
 TOKEN_FILE="$HERE/data/nowplaying.token"
 [ -s "$TOKEN_FILE" ] || { echo "No $TOKEN_FILE yet. Update HarbourOS and start it first (git pull && docker compose up -d --build)."; exit 1; }
+# data/ is writable by the container: never follow a link planted there, and accept only a token-shaped value.
+if [ -L "$TOKEN_FILE" ] || [ ! -f "$TOKEN_FILE" ]; then echo "$TOKEN_FILE must be a plain file."; exit 1; fi
+TOKEN="$(head -c 200 "$TOKEN_FILE" | tr -d '\n')"
+printf '%s' "$TOKEN" | grep -Eq '^[A-Za-z0-9_-]{16,128}$' || { echo "$TOKEN_FILE doesn't look like a HarbourOS token."; exit 1; }
 IP="$(tailscale ip -4 2>/dev/null | head -n1 || true)"
 URL="http://${IP:-127.0.0.1}:$PORT/api/nowplaying/push"
 curl -s -o /dev/null -m 5 "http://${IP:-127.0.0.1}:$PORT/" || { echo "HarbourOS doesn't answer on ${IP:-127.0.0.1}:$PORT."; exit 1; }
 
 # Readable by root (AirPlay reader) and the raspotify service user only.
 umask 077
-printf 'HARBOUR_URL=%s\nHARBOUR_TOKEN=%s\n' "$URL" "$(tr -d '\n' < "$TOKEN_FILE")" > "$ENVF"
+printf 'HARBOUR_URL=%s\nHARBOUR_TOKEN=%s\n' "$URL" "$TOKEN" > "$ENVF"
 RS_USER="$(systemctl show -p User --value raspotify 2>/dev/null || true)"
 RS_DYN="$(systemctl show -p DynamicUser --value raspotify 2>/dev/null || true)"
 if [ -n "$RS_USER" ] && [ "$RS_USER" != root ] && id "$RS_USER" >/dev/null 2>&1; then chgrp "$(id -gn "$RS_USER")" "$ENVF"; chmod 640 "$ENVF"

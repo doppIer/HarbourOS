@@ -77,9 +77,12 @@ export const hostfs = {
 
   async list(dir: string): Promise<Entry[]> {
     if (ssh) {
-      const out = await run(`cd -- ${q(dir)} && find . -mindepth 1 -maxdepth 1 -printf '%f\\t%y\\t%Y\\t%s\\t%T@\\t%m\\t%u\\0' | head -z -n ${MAX_ENTRIES}`, dir);
+      const out = await run(`cd -- ${q(dir)} && find . -mindepth 1 -maxdepth 1 -printf '%y\\t%Y\\t%s\\t%T@\\t%m\\t%u\\t%f\\0' | head -z -n ${MAX_ENTRIES}`, dir);
       return out.toString("utf8").split("\0").filter(Boolean).map((l) => {
-        const [name, y, Y, size, t, mode, owner] = l.split("\t");
+        // The name comes last and may itself contain tabs: split off the six fixed fields only.
+        const f: string[] = []; let rest = l;
+        for (let i = 0; i < 6; i++) { const j = rest.indexOf("\t"); if (j < 0) break; f.push(rest.slice(0, j)); rest = rest.slice(j + 1); }
+        const [y, Y, size, t, mode, owner] = f, name = rest;
         const type = kind(y);
         return { name, type, ...(type === "link" ? { target: kind(Y) as Entry["target"] } : {}), size: Number(size), mtime: Math.round(Number(t) * 1000), mode, owner };
       });

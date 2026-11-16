@@ -10,16 +10,18 @@ const clients = new Set<Client>();
 const listeners: (() => void)[] = [];
 
 export const hub = {
-  add(ws: WebSocket) {
-    const c: Client = { ws, topics: new Set(["stats", "containers", "apps", "boot", "widgets", "store", "nowplaying"]), visible: true, viewing: null };
+  /** `admin` decides whether store jobs and app boot details are sent. */
+  add(ws: WebSocket, admin = false) {
+    const allowed = new Set(["stats", "containers", "apps", "widgets", "nowplaying", ...(admin ? ["boot", "store"] : [])]);
+    const c: Client = { ws, topics: new Set(allowed), visible: true, viewing: null };
     clients.add(c);
     ws.on("message", (raw) => {
       let m: ClientMsg;
       try { m = JSON.parse(String(raw)); } catch { return; }
-      if (m.t === "sub") m.topics.forEach((t) => c.topics.add(t));
-      else if (m.t === "unsub") m.topics.forEach((t) => c.topics.delete(t));
+      if (m.t === "sub" && Array.isArray(m.topics)) m.topics.forEach((t) => { if (allowed.has(t)) c.topics.add(t); });
+      else if (m.t === "unsub" && Array.isArray(m.topics)) m.topics.forEach((t) => c.topics.delete(t));
       else if (m.t === "visibility") c.visible = m.visible;
-      else if (m.t === "viewing") c.viewing = m.app;
+      else if (m.t === "viewing") c.viewing = typeof m.app === "string" ? m.app.slice(0, 64) : null;
       listeners.forEach((f) => f());
     });
     ws.on("close", () => { clients.delete(c); listeners.forEach((f) => f()); });

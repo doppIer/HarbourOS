@@ -140,8 +140,10 @@ export async function chat(chatId: string, userText: string, emit: (e: ChatEvent
 /** Runs only after the user taps Approve. */
 export async function approveAction(id: string, approve: boolean) {
   const r: any = db.prepare("SELECT * FROM actions WHERE id=?").get(id);
-  if (!r || r.status !== "pending") throw new Error("This action is no longer pending.");
-  if (!approve) { db.prepare("UPDATE actions SET status='declined' WHERE id=?").run(id); return "declined"; }
+  // Claim it atomically: two clicks at once must not run the action twice.
+  const claimed = db.prepare("UPDATE actions SET status=? WHERE id=? AND status='pending'").run(approve ? "running" : "declined", id).changes === 1;
+  if (!r || !claimed) throw new Error("This action is no longer pending.");
+  if (!approve) return "declined";
   const [kind, action] = String(r.kind).split(":");
   if (kind === "app") {
     const app = apps.get(r.target) ?? apps.all().find((a) => a.name.toLowerCase() === String(r.target).toLowerCase());

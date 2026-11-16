@@ -26,8 +26,8 @@ const iconDir = path.join(env.dataDir, "icons");
 
 export async function registerRoutes(app: FastifyInstance) {
   // ---------- live channel ----------
-  app.get("/ws", { websocket: true }, (socket) => {
-    hub.add(socket);
+  app.get("/ws", { websocket: true }, (socket, req) => {
+    hub.add(socket, req.user?.role === "admin");
     if (latest) hub.send(socket, { t: "stats", d: latest });
     hub.send(socket, { t: "containers", d: containers });
     hub.send(socket, { t: "apps", d: apps.all().map((a) => ({ ...a, status: appStatus(a) })) });

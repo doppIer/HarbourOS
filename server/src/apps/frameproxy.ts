@@ -50,6 +50,11 @@ function start(port: number, target: URL) {
   });
   server.on("upgrade", (req, sock, head) => {
     if (!userFromCookieHeader(req.headers.cookie)) { sock.end("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n"); return; }
+    // Same-site pages on other ports would otherwise get the user's session here: only the app's own page (this exact host:port) may connect.
+    const origin = req.headers.origin;
+    let ok = !origin;
+    try { if (origin) ok = new URL(origin).host === String(req.headers.host ?? ""); } catch {}
+    if (!ok) { sock.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n"); return; }
     const headers: Record<string, unknown> = { ...req.headers, cookie: withoutOurCookies(req.headers.cookie) };
     if (!headers.cookie) delete headers.cookie;
     const up = net.connect(Number(target.port || 80), target.hostname, () => {

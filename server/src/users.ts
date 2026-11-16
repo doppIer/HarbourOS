@@ -28,7 +28,7 @@ export const users = {
   count: () => (db.prepare("SELECT COUNT(*) n FROM users").get() as any).n as number,
   activeAdmins: () => (db.prepare("SELECT COUNT(*) n FROM users WHERE role='admin' AND status='active'").get() as any).n as number,
   get: (id: string) => pub(db.prepare("SELECT * FROM users WHERE id=?").get(id)),
-  byEmail: (email: string) => pub(db.prepare("SELECT * FROM users WHERE email=?").get(email.trim())),
+  byEmail: (email: string) => pub(db.prepare("SELECT * FROM users WHERE lower(email)=lower(?)").get(email.trim())),
   all: () => (db.prepare("SELECT * FROM users ORDER BY created").all() as any[]).map((r) => pub(r)!),
 
   create(email: string, name: string, password: string, role: Role, status: Status): User {
@@ -40,7 +40,7 @@ export const users = {
 
   /** Returns the user only if the password matches (any status). */
   check(email: string, password: string): User | null {
-    const r: any = db.prepare("SELECT * FROM users WHERE email=?").get(email.trim());
+    const r: any = db.prepare("SELECT * FROM users WHERE lower(email)=lower(?)").get(email.trim());
     const ok = verifyPassword(password, r?.hash ?? DUMMY);
     return r && ok ? pub(r) : null;
   },
@@ -61,6 +61,7 @@ export const users = {
 
   remove(id: string) {
     db.prepare("DELETE FROM sessions WHERE user_id=?").run(id);
+    db.prepare("DELETE FROM wall_profiles WHERE id=?").run(`user:${id}`);
     db.prepare("DELETE FROM users WHERE id=?").run(id);
   },
 };
