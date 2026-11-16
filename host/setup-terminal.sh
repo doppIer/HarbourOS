@@ -18,7 +18,7 @@ for f in "$DATA_DIR/ssh" "$DATA_DIR/ssh/id_ed25519" "$DATA_DIR/ssh/id_ed25519.pu
 done
 [ -f "$DATA_DIR/ssh/id_ed25519" ] || ssh-keygen -t ed25519 -N "" -C "harboros" -f "$DATA_DIR/ssh/id_ed25519" >/dev/null
 chmod -h 600 "$DATA_DIR/ssh/id_ed25519" 2>/dev/null || chmod 600 "$DATA_DIR/ssh/id_ed25519"
-grep -Eq '^ssh-ed25519 [A-Za-z0-9+/=]+( [^[:cntrl:]]*)?$' "$DATA_DIR/ssh/id_ed25519.pub" || { echo "id_ed25519.pub isn't a single ed25519 key."; exit 1; }
+[ "$(grep -c '' "$DATA_DIR/ssh/id_ed25519.pub")" = 1 ] && grep -Eq '^ssh-ed25519 [A-Za-z0-9+/=]+( [^[:cntrl:]]*)?$' "$DATA_DIR/ssh/id_ed25519.pub" || { echo "id_ed25519.pub isn't a single ed25519 key."; exit 1; }
 
 HOME_DIR=$(getent passwd "$USER_NAME" | cut -d: -f6)
 install -d -m 700 -o "$USER_NAME" -g "$USER_NAME" "$HOME_DIR/.ssh"

@@ -145,6 +145,7 @@ export async function approveAction(id: string, approve: boolean) {
   if (!r || !claimed) throw new Error("This action is no longer pending.");
   if (!approve) return "declined";
   const [kind, action] = String(r.kind).split(":");
+  try {
   if (kind === "app") {
     const app = apps.get(r.target) ?? apps.all().find((a) => a.name.toLowerCase() === String(r.target).toLowerCase());
     if (!app) throw new Error(`No app ${r.target}`);
@@ -156,6 +157,11 @@ export async function approveAction(id: string, approve: boolean) {
     if (!c) throw new Error(`No container ${r.target}`);
     await (action === "start" ? docker.start(c.Id) : action === "stop" ? docker.stop(c.Id) : docker.restart(c.Id));
     await refresh();
+  }
+  } catch (e) {
+    // Don't leave it stuck as "running": record the failure so it's visible and not retried by accident.
+    db.prepare("UPDATE actions SET status='failed' WHERE id=?").run(id);
+    throw e;
   }
   db.prepare("UPDATE actions SET status='done' WHERE id=?").run(id);
   return "done";

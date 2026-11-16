@@ -108,8 +108,9 @@ export function render(app: StoreApp, o: InstallOptions): Rendered {
         // Normalise so "/DATA/AppData/../../etc" can't pass as our data folder.
         const m = path.posix.normalize(mapPath(src));
         const under = (root: string) => { const r = path.posix.normalize(root.replace(/\/$/, "")); return m === r || m.startsWith(r + "/"); };
-        const ours = m !== path.posix.normalize(src) && (under(o.dataRoot) || under(o.mediaRoot)); // under the data or media folder: create it if missing
-        if (m !== path.posix.normalize(src) && !ours) risks.push(`${name} mounts ${m}, outside the app data and media folders.`);
+        const mapped = m !== path.posix.normalize(src) || /^\/DATA(\/|$)/.test(src);
+        const ours = mapped && (under(o.dataRoot) || under(o.mediaRoot)); // under the data or media folder: create it if missing
+        if (mapped && !ours) risks.push(`${name} mounts ${m}, outside the app data and media folders.`);
         // Host paths the catalog assumes but this machine lacks (e.g. Raspberry Pi /opt/vc/lib).
         if (!ours && !fs.existsSync(path.join(env.hostRoot, src))) { notes.push(`Removed mount ${src} (${name}): not present on this host.`); return null; }
         mounts.push(m); flagMount(m, name, risks);

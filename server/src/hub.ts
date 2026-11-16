@@ -20,7 +20,7 @@ export const hub = {
       try { m = JSON.parse(String(raw)); } catch { return; }
       if (m.t === "sub" && Array.isArray(m.topics)) m.topics.forEach((t) => { if (allowed.has(t)) c.topics.add(t); });
       else if (m.t === "unsub" && Array.isArray(m.topics)) m.topics.forEach((t) => c.topics.delete(t));
-      else if (m.t === "visibility") c.visible = m.visible;
+      else if (m.t === "visibility") c.visible = m.visible === true;
       else if (m.t === "viewing") c.viewing = typeof m.app === "string" ? m.app.slice(0, 64) : null;
       listeners.forEach((f) => f());
     });
