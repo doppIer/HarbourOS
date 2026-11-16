@@ -101,7 +101,8 @@ export class AnimalEngine {
   private resize() {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // HarbourOS: 1.5 is sharp enough for ASCII and draws about half the pixels of 2.
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     this.renderer.resize(rect.width, rect.height, dpr);
     this.flock.resize(rect.width, rect.height);
     if (this.reducedMotion.matches) this.drawStill();
@@ -114,7 +115,12 @@ export class AnimalEngine {
     this.raf = requestAnimationFrame(this.frame);
   }
 
+  // HarbourOS: draw at most 30 times a second; the motion is slow, and a
+  // background at the screen's full rate (up to 144 Hz) keeps the GPU busy.
+  private lastDraw = 0;
   private frame = (now: number) => {
+    if (now - this.lastDraw < 1000 / 30 - 2) { this.raf = requestAnimationFrame(this.frame); return; }
+    this.lastDraw = now;
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
     this.acc += dt;

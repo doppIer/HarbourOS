@@ -511,9 +511,8 @@ a.it, a.btn { text-decoration: none; }
 @keyframes stage-in { from { opacity: 0; clip-path: circle(0% at 50% 100%); } to { opacity: 1; clip-path: circle(150% at 50% 100%); } }
 @keyframes stage-out { to { opacity: 0; transform: scale(1.04); filter: blur(8px); } }
 .stage-bg { position: absolute; inset: -12%; background: radial-gradient(circle at 30% 40%, #3f3db8, #08090a 70%) center / cover; filter: blur(70px) saturate(1.6) brightness(.55); transform: scale(1.1);
-  animation: stage-bg 1.2s ease both, stage-drift 30s ease-in-out infinite alternate; }
+  animation: stage-bg 1.2s ease both; }
 @keyframes stage-bg { from { opacity: 0; } }
-@keyframes stage-drift { to { transform: scale(1.25) translate(-3%, 2%) rotate(3deg); } }
 .stage::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.55)); pointer-events: none; }
 .stage-clock { position: absolute; z-index: 2; top: max(var(--s6), env(safe-area-inset-top)); right: var(--s7); font-size: clamp(22px, 2.6vw, 30px); font-weight: 300; color: rgba(255,255,255,.75); font-variant-numeric: tabular-nums; animation: stage-up .8s .35s both; }
 .stage-body { position: relative; z-index: 2; display: flex; align-items: center; gap: clamp(28px, 5vw, 72px); width: min(1100px, 88vw); }
@@ -597,3 +596,8 @@ a.it, a.btn { text-decoration: none; }
 .home-np-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: var(--s1); }
 .home-np-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex-shrink: 0; border: 0; border-radius: 50%; background: var(--active); color: var(--t1); cursor: pointer; }
 .home-np-btn:hover { background: var(--line-2); }
+
+/* Performance on wall tablets: no live blur over the moving background (each
+   blurred layer is redrawn every frame), and nothing drawn under the stage. */
+.wall :is(.wall-cell > .tile, .wall-rail, .np, .dj-deck, .np-mini, .dj-search, .seg, .dj-cover, .dj-bar .btn) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.wall.staged :is(.wall-inner, .wall-section, .wall-rail, .np) { visibility: hidden; transition: visibility 0s .7s; }

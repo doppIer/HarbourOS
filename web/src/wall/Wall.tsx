@@ -89,8 +89,8 @@ export function Wall() {
   if (!p) return <div class="wall" />;
 
   return (
-    <div class={`wall ${p.look.theme}`} style={{ "--glass": p.look.glass / 100 } as any} onPointerDownCapture={fx.touch}>
-      {p.look.background !== "none" && <BackgroundLayer module={p.look.background} theme={p.look.theme} paused={!!open || fx.dim > 0 || fx.saver} />}
+    <div class={`wall ${p.look.theme} ${stage.open ? "staged" : ""}`} style={{ "--glass": p.look.glass / 100 } as any} onPointerDownCapture={fx.touch}>
+      {p.look.background !== "none" && <BackgroundLayer module={p.look.background} theme={p.look.theme} paused={!!open || fx.dim > 0 || fx.saver || stage.open} />}
       <nav class="wall-rail" aria-label="Wall">
         {me.value?.role !== "device" && <a class="wall-rail-btn" href="/" aria-label="Back to the desktop" title="Desktop"><Icon name="solar:home-2-linear" size={24} /></a>}
         <button class={`wall-rail-btn ${section === "tiles" && !editing ? "on" : ""}`} aria-label="Tiles" title="Tiles" onClick={() => setSection("tiles")}><Icon name="solar:widget-4-linear" size={22} /></button>
