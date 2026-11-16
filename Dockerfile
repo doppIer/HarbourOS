@@ -25,8 +25,10 @@ COPY --from=server /app/server/node_modules ./node_modules
 COPY --from=server /app/server/dist ./dist
 COPY --from=web /app/web/dist ./public
 COPY defaults ./defaults
+COPY --chmod=755 entrypoint.sh /usr/local/bin/harbour-entrypoint
 ENV NODE_ENV=production PORT=7080 PUBLIC_DIR=/app/public DEFAULTS_DIR=/app/defaults \
     NODE_OPTIONS=--max-old-space-size=96
 EXPOSE 7080
-ENTRYPOINT ["/usr/bin/tini","--"]
+# Runs as root only long enough to give /data to the "node" user, then drops to it.
+ENTRYPOINT ["/usr/bin/tini","--","/usr/local/bin/harbour-entrypoint"]
 CMD ["node","dist/index.js"]

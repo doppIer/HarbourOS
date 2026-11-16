@@ -71,7 +71,7 @@ EOF
 #!/usr/bin/env python3
 # Reads shairport-sync's metadata pipe and forwards it to HarbourOS.
 import base64, json, os, re, sys, time, urllib.request
-env = dict(l.strip().split("=", 1) for l in open("/etc/harbour-nowplaying.env") if "=" in l)
+env = os.environ  # systemd passes /etc/harbour-nowplaying.env (EnvironmentFile)
 URL, TOKEN = env["HARBOUR_URL"], env["HARBOUR_TOKEN"]
 PIPE = sys.argv[1]
 
@@ -123,6 +123,10 @@ Description=HarbourOS now playing (AirPlay)
 After=shairport-sync.service
 
 [Service]
+# Not root: the shairport user owns the pipe; systemd reads the token file for it.
+User=$SP_USER
+EnvironmentFile=$ENVF
+NoNewPrivileges=yes
 ExecStart=$READER $PIPE_DIR/metadata
 Restart=always
 RestartSec=3

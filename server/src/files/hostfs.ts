@@ -29,7 +29,18 @@ export function protectedPath(p: string) {
 const MAX_ENTRIES = 5000;
 const ssh = env.terminalMode === "ssh";
 const root = path.resolve(env.filesRoot);
-const local = (p: string) => path.join(root, p);
+let realRoot = root;
+try { realRoot = fs.realpathSync(root); } catch {}
+/** A path under the files root. Symlinks inside the root may not lead outside it. */
+const local = (p: string) => {
+  const full = path.join(root, p);
+  let probe = full;
+  while (!fs.existsSync(probe) && probe !== root) probe = path.dirname(probe);
+  let real = probe;
+  try { real = fs.realpathSync(probe); } catch {}
+  if (real !== realRoot && !real.startsWith(realRoot + path.sep)) throw httpError(403, `${p} leads outside the files folder.`);
+  return full;
+};
 
 function sshError(err: string, p: string): Error {
   if (isAuthError(err)) return httpError(503, SSH_HINT);

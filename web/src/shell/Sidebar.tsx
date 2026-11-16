@@ -20,14 +20,14 @@ function Item({ id, icon, label, status, extra }: { id: string; icon: string; la
 function appMenu(a: App) {
   if (!isAdmin.value) return () => [
     { label: "Open", icon: "solar:play-linear", run: () => navigate(a.id) },
-    { label: "Open in new tab", icon: "solar:square-top-down-linear", run: () => window.open(a.url, "_blank") },
+    { label: "Open in new tab", icon: "solar:square-top-down-linear", run: () => window.open(a.url, "_blank", "noopener") },
   ];
   return () => [
     { label: "Open", icon: "solar:play-linear", run: () => navigate(a.id) },
     { label: "Restart", icon: "solar:restart-linear", run: () => api(`/api/apps/${a.id}/restart`, { method: "POST" }) },
     { label: "Stop", icon: "solar:stop-circle-linear", run: () => api(`/api/apps/${a.id}/stop`, { method: "POST" }) },
     { label: "View logs", icon: "solar:document-text-linear", run: () => a.containers[0] && (dialog.value = { kind: "logs", container: a.containers[0] }) },
-    { label: "Open in new tab", icon: "solar:square-top-down-linear", run: () => window.open(a.url, "_blank") },
+    { label: "Open in new tab", icon: "solar:square-top-down-linear", run: () => window.open(a.url, "_blank", "noopener") },
     "-" as const,
     { label: "Edit", icon: "solar:pen-linear", run: () => (dialog.value = { kind: "add-app", app: a }) },
     { label: a.pinned ? "Unpin" : "Pin", icon: "solar:pin-linear", run: () => api(`/api/apps/${a.id}`, { method: "PUT", json: { pinned: !a.pinned } }) },

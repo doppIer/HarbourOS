@@ -17,6 +17,12 @@ import { userFromCookieHeader, withoutOurCookies } from "../auth.js";
 const [lo, hi] = (process.env.FRAME_PORTS ?? "7081-7090").split("-").map(Number);
 const servers = new Map<number, { server: http.Server; target: string }>();
 
+// Replace the app's framing rule with one that allows only pages on this host
+// (HarbourOS on its own port), instead of dropping it for every site.
+function framedBy(host: string | undefined) {
+  const name = (host ?? "").replace(/:\d+$/, "").replace(/[^\w.\-\[\]:]/g, "");
+  return name ? `frame-ancestors http://${name}:* https://${name}:*` : "frame-ancestors 'self'";
+}
 function stripCsp(v: string) {
   return v.split(";").map((d) => d.trim()).filter((d) => d && !/^frame-ancestors\b/i.test(d)).join("; ");
 }
@@ -34,6 +40,8 @@ function start(port: number, target: URL) {
       const h = { ...r.headers };
       delete h["x-frame-options"];
       for (const k of ["content-security-policy", "content-security-policy-report-only"]) if (typeof h[k] === "string") h[k] = stripCsp(h[k] as string);
+      const csp = typeof h["content-security-policy"] === "string" && h["content-security-policy"] ? h["content-security-policy"] + "; " : "";
+      h["content-security-policy"] = csp + framedBy(req.headers.host);
       res.writeHead(r.statusCode ?? 502, r.statusMessage, h);
       r.pipe(res);
     });

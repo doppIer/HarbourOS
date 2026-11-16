@@ -22,7 +22,9 @@ declare module "fastify" {
 // small in-memory rate limit per IP for login/sign-up
 const attempts = new Map<string, { n: number; until: number }>();
 function limited(ip: string) { const a = attempts.get(ip); return !!a && a.until > Date.now(); }
-function fail(ip: string) { const n = (attempts.get(ip)?.n ?? 0) + 1; attempts.set(ip, { n, until: n >= 5 ? Date.now() + 60_000 : 0 }); }
+function fail(ip: string) {
+  if (attempts.size > 5000) for (const [k, v] of attempts) if (v.until < Date.now()) attempts.delete(k);
+  const n = (attempts.get(ip)?.n ?? 0) + 1; attempts.set(ip, { n, until: n >= 5 ? Date.now() + 60_000 : 0 }); }
 
 /** Origin header names this same host (direct, or through a proxy that sets X-Forwarded-Host). */
 function sameOrigin(origin: string, req: FastifyRequest): boolean {
@@ -123,10 +125,13 @@ export async function registerAuth(app: FastifyInstance) {
     if (limited(req.ip)) return reply.code(429).send({ error: "Too many attempts. Try again in a minute." });
     const { email, password } = (req.body ?? {}) as { email?: string; password?: string };
     if (!validEmail(email) || typeof password !== "string") return reply.code(400).send({ error: "Enter your email and password." });
+    // Also per account, so guesses spread over many addresses still hit a wall.
+    const acct = "acct:" + email.toLowerCase();
+    if (limited(acct)) return reply.code(429).send({ error: "Too many attempts. Try again in a minute." });
     const u = users.check(email, password);
-    if (!u) { fail(req.ip); return reply.code(401).send({ error: "That email and password don't match." }); }
+    if (!u) { fail(req.ip); fail(acct); return reply.code(401).send({ error: "That email and password don't match." }); }
     if (u.status !== "active") return reply.code(403).send({ error: "Your account is waiting for an admin to approve it." });
-    attempts.delete(req.ip);
+    attempts.delete(req.ip); attempts.delete(acct);
     startSession(reply, u);
     return { user: u };
   });
