@@ -618,3 +618,22 @@ a.it, a.btn { text-decoration: none; }
 .night-desc { display: grid; text-align: left; font-size: 17px; gap: 2px; }
 .night-desc .dim { color: rgba(255,255,255,.5); font-size: 15px; white-space: pre; }
 .wall.nightview :is(.wall-inner, .wall-section, .wall-rail, .np, .np-mini) { visibility: hidden; }
+
+/* Stage controls: as wide as the song bar, big targets for fingers; the volume
+   button springs open into a slider across the whole row. */
+.stage-ctrl { position: relative; flex-wrap: nowrap; justify-content: space-between; gap: 0; max-width: 560px; width: 100%; margin-top: var(--s6); }
+.stage-ctrl button { width: 76px; height: 76px; }
+.stage-ctrl button.play { width: 92px; height: 92px; }
+.stage-ctrl .vol-space { width: 76px; height: 76px; flex: none; }
+.stage-ctrl .vol { position: absolute; top: 50%; right: 0; left: calc(100% - 76px); height: 76px; margin: 0; transform: translateY(-50%); border-radius: 38px;
+  transition: left .55s cubic-bezier(.2,1.2,.3,1), background .35s ease, box-shadow .35s ease; }
+.stage-ctrl .vol.open { left: 0; z-index: 2; background: rgba(30,30,34,.92); }
+.stage-ctrl .vol .vol-btn { width: 76px; height: 76px; }
+.stage-ctrl .vol .vol-slide { flex: 1; }
+.stage-ctrl .vol.open .vol-slide { width: auto; padding-right: var(--s6); }
+.stage-ctrl .vol-track { height: 10px; border-radius: 5px; }
+.stage-ctrl .vol-knob { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+.stage-ctrl .vol-num { font-size: 15px; width: 34px; }
+@media (max-width: 700px), (orientation: portrait) { .stage-ctrl { margin-inline: auto; } }
+.stage-ctrl > button { transition: transform .2s cubic-bezier(.2,1.4,.3,1), background .2s, color .2s, opacity .25s ease; }
+.stage-ctrl:has(.vol.open) > button, .stage-ctrl:has(.vol.open) > .stage-eq { opacity: 0; pointer-events: none; }

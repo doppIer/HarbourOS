@@ -366,7 +366,7 @@ const OPTIONS: Record<string, (o: Record<string, string>, set: (o: Record<string
     <>
       <label class="field"><span>Style</span>
         <select class="input" value={o.style || "plain"} onChange={(e) => set({ ...o, style: e.currentTarget.value })}>
-          <option value="plain">Big digits</option><option value="flip">Flip cards</option>
+          <option value="plain">Big digits</option><option value="analog">Watch face</option><option value="flip">Flip cards</option>
         </select>
       </label>
       <label class="check"><input type="checkbox" checked={o.seconds === "1"} onChange={(e) => set({ ...o, seconds: e.currentTarget.checked ? "1" : "" })} />Show seconds</label>

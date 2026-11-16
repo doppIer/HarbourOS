@@ -68,6 +68,7 @@ export function Stage({ open, onClose }: { open: boolean; onClose: () => void })
           )}
           <div class="stage-ctrl" onClick={(e) => e.stopPropagation()}>
             {n.controls ? <Controls n={n} /> : n.state === "playing" && <div class="stage-eq" aria-hidden="true"><i /><i /><i /><i /><i /></div>}
+            <span class="vol-space" aria-hidden="true" />
             <Volume />
           </div>
         </div>
