@@ -14,7 +14,7 @@ import { hostExec, isAuthError } from "./host.js";
 
 let now: NowPlaying | null = null;
 let coverBytes: { type: string; body: Buffer } | null = null;
-let coverVer = 0;
+let coverAt = 0; // when the last AirPlay cover arrived
 // Last report from each source, for Settings → Speaker.
 const seen: Partial<Record<NowPlaying["source"], { at: number; via: "host" | "docker" }>> = {};
 // Settings → Speaker → Test: a sample track on the wall for a few seconds.
@@ -84,7 +84,8 @@ export async function registerNowPlaying(app: FastifyInstance) {
     if (!now || now.source !== source) now = { source, state: "stopped", title: "", artist: "", album: "", cover: null, duration: 0, position: 0, at: Date.now() };
     const n: NowPlaying = { ...now };
 
-    if (b.event === "track") { n.title = ""; n.artist = ""; n.album = ""; n.duration = 0; n.position = 0; n.at = Date.now(); if (source === "spotify") n.cover = null; }
+    if (b.event === "track") { n.title = ""; n.artist = ""; n.album = ""; n.duration = 0; n.position = 0; n.at = Date.now(); // A new song drops the old cover, unless its own cover came just before (AirPlay can send it first).
+      if (source === "spotify" || Date.now() - coverAt > 3000) n.cover = null; }
     for (const k of ["title", "artist", "album", "device"] as const) { const v = str(b[k]); if (v !== undefined) n[k] = v; }
     const d = num(b.duration); if (d !== undefined) n.duration = d;
     const p = num(b.position); if (p !== undefined) { n.position = p; n.at = Date.now(); }
@@ -92,8 +93,10 @@ export async function registerNowPlaying(app: FastifyInstance) {
     if (typeof b.coverData === "string" && b.coverData) {
       const body = Buffer.from(b.coverData, "base64");
       const type = body[0] === 0x89 ? "image/png" : "image/jpeg";
-      coverBytes = { type, body }; coverVer++;
-      n.cover = `/api/nowplaying/cover?v=${coverVer}`;
+      coverBytes = { type, body }; coverAt = Date.now();
+      // Named after its content: a counter restarts with HarbourOS and the tablet
+      // would show an old song's cached cover under the reused number.
+      n.cover = `/api/nowplaying/cover?v=${crypto.createHash("sha1").update(body).digest("hex").slice(0, 16)}`;
     }
     if (b.state === "playing" || b.state === "paused" || b.state === "stopped") {
       // Keep the clock right across pauses.
