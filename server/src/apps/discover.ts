@@ -55,9 +55,25 @@ export async function discover(host: string, existing: AppConfig[]): Promise<Fou
 
 /** Download the best icon a web app advertises (apple-touch-icon, icon link, /favicon.ico). */
 export async function appLogo(url: string): Promise<string | null> {
-  const get = (u: string) => fetch(u, { redirect: "follow", signal: AbortSignal.timeout(4000) });
+  // Follow redirects only within the app's own host, so an app can't point HarbourOS at other machines.
+  const origin = new URL(url).hostname;
+  const get = async (u: string) => {
+    let at = new URL(u);
+    for (let hop = 0; ; hop++) {
+      const r = await fetch(at, { redirect: "manual", signal: AbortSignal.timeout(4000) });
+      const loc = r.status >= 300 && r.status < 400 ? r.headers.get("location") : null;
+      if (!loc) return r;
+      at = new URL(loc, at);
+      if (hop >= 3 || at.hostname !== origin || !/^https?:$/.test(at.protocol)) throw new Error("redirect elsewhere");
+    }
+  };
+  const readMax = async (r: Response, max: number) => {
+    const out: Buffer[] = []; let n = 0;
+    for await (const ch of r.body as any as AsyncIterable<Uint8Array>) { n += ch.length; if (n > max) break; out.push(Buffer.from(ch)); }
+    return Buffer.concat(out).subarray(0, max);
+  };
   const page = await get(url);
-  const html = (page.headers.get("content-type") ?? "").includes("html") ? (await page.text()).slice(0, 200_000) : "";
+  const html = (page.headers.get("content-type") ?? "").includes("html") ? (await readMax(page, 200_000)).toString("utf8") : "";
   const links = [...html.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
   const attr = (tag: string, k: string) => new RegExp(`\\b${k}\\s*=\\s*["']([^"']+)["']`, "i").exec(tag)?.[1];
   const score = (tag: string) => {
@@ -75,7 +91,7 @@ export async function appLogo(url: string): Promise<string | null> {
       const type = r.headers.get("content-type") ?? "";
       const ext = type.includes("svg") ? ".svg" : type.includes("png") ? ".png" : type.includes("webp") ? ".webp" : type.includes("jpeg") ? ".jpg" : type.includes("icon") ? ".ico" : "";
       if (!r.ok || !ext) continue;
-      const buf = Buffer.from(await r.arrayBuffer());
+      const buf = await readMax(r, 512 * 1024 + 1);
       if (buf.length < 100 || buf.length > 512 * 1024) continue;
       const dir = path.join(env.dataDir, "icons");
       fs.mkdirSync(dir, { recursive: true });

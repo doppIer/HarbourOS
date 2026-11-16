@@ -6,9 +6,23 @@ import type { AppConfig } from "../protocol.js";
 /** Containers that belong to an app (explicit names + whole compose project). */
 export function appContainers(app: AppConfig): RawContainer[] {
   const set = new Map<string, RawContainer>();
-  if (app.composeProject) stackMembers(app.composeProject).forEach((c) => set.set(c.Id, c));
+  if (app.composeProject) {
+    // A label is just a claim any container can make: keep only the members from the
+    // folder most of the project was started from, so a stray container can't join.
+    const members = stackMembers(app.composeProject);
+    const dir = (c: RawContainer) => c.Labels?.["com.docker.compose.project.working_dir"] ?? "";
+    const counts = new Map<string, number>();
+    members.forEach((c) => counts.set(dir(c), (counts.get(dir(c)) ?? 0) + 1));
+    const main = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+    members.filter((c) => dir(c) === main).forEach((c) => set.set(c.Id, c));
+  }
   app.containers.forEach((n) => { const c = findByName(n); if (c) set.set(c.Id, c); });
-  return [...set.values()];
+  // Never start/stop HarbourOS itself (or its Docker proxy) as part of an app.
+  return [...set.values()].filter((c) => !isHarbourContainer(c));
+}
+
+export function isHarbourContainer(c: { Labels?: Record<string, string>; Image?: string }) {
+  return c.Labels?.["com.docker.compose.project"] === "harboros" || /docker-socket-proxy|^harboros/.test(c.Image ?? "");
 }
 
 /** Topological order using compose's depends_on label: dependencies first. */
