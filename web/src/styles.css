@@ -579,3 +579,21 @@ a.it, a.btn { text-decoration: none; }
 .vol.dark .vol-track { background: var(--line-2); } .vol.dark .vol-fill, .vol.dark .vol-knob { background: var(--t1); }
 .vol.dark .vol-num, .vol.dark + .vol-err, .vol.dark .vol-err { color: var(--t3); }
 .tile .vol.open .vol-slide { width: clamp(110px, 13vw, 180px); }
+
+/* Settings → Speaker */
+.sp-row { align-items: flex-start; padding-top: var(--s3); padding-bottom: var(--s3); }
+.sp-row > .tag { margin-top: 2px; }
+.sp-sub { font-size: 12.5px; margin-top: 2px; }
+.sp-fix { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); font-size: 12.5px; }
+.sp-fix code { padding: 3px var(--s2); border: 1px solid var(--line-2); background: var(--bg, #000); color: var(--t1); user-select: all; }
+.tag.sp-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.tag.sp-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+
+/* Home: what the speaker plays, small, top right (next to Customize) */
+.home-np { display: inline-flex; align-items: center; gap: var(--s2); max-width: min(340px, 40vw); height: 34px; padding: 0 var(--s1) 0 var(--s3); flex-shrink: 1; min-width: 0;
+  border-radius: 17px; border: 1px solid var(--line-2); background: var(--raise); color: var(--t1); font-size: 13px; animation: np-in .5s cubic-bezier(.2,1.2,.3,1); }
+.home-np .np-eq { height: 12px; flex-shrink: 0; }
+.home-np.paused .np-eq i { animation-play-state: paused; opacity: .5; }
+.home-np-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: var(--s1); }
+.home-np-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex-shrink: 0; border: 0; border-radius: 50%; background: var(--active); color: var(--t1); cursor: pointer; }
+.home-np-btn:hover { background: var(--line-2); }

@@ -5,6 +5,7 @@ import { Icon } from "../icons/Icon";
 import { Tile, loadLayout, saveLayout, type LayoutItem, type Size } from "../widgets/runtime";
 import { fmt } from "../widgets/ui";
 import type { ContainerInfo } from "../../../server/src/protocol";
+import { np, watchNowPlaying, control } from "../lib/nowplaying";
 
 const SIZES: Size[] = ["s", "m", "tall", "l", "w"];
 const greet = () => { const h = new Date().getHours(); return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
@@ -21,7 +22,7 @@ export function Home() {
   const [available, setAvailable] = useState<string[]>([]);
   const [dragI, setDragI] = useState<number | null>(null);
 
-  useEffect(() => { loadLayout().then(setLayout); }, []);
+  useEffect(() => { loadLayout().then(setLayout); watchNowPlaying(); }, []);
   useEffect(() => { if (editing) api<string[]>("/api/widgets").then(setAvailable); }, [editing]);
 
   const update = (l: LayoutItem[]) => { setLayout(l); saveLayout(l); };
@@ -41,6 +42,7 @@ export function Home() {
           <h1>{greet()}</h1>
           <div class="lede">{lede}</div>
         </div>
+        <NowPill />
         {isAdmin.value && (
           <button class="btn" onClick={() => setEditing(!editing)}>
             <Icon name="solar:widget-add-linear" size={15} />{editing ? "Done" : "Customize"}
@@ -51,7 +53,7 @@ export function Home() {
       {editing && (
         <div class="rows" style={{ marginBottom: 12, padding: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span class="muted" style={{ fontSize: 12.5 }}>Drag tiles to reorder. Add:</span>
-          {available.map((w) => (
+          {available.filter((w) => w !== "nowplaying").map((w) => (
             <button key={w} class="btn" onClick={() => update([...layout, { widget: w, size: "s" }])}>
               <Icon name="solar:add-circle-linear" size={14} />{w}
             </button>
@@ -63,7 +65,7 @@ export function Home() {
       )}
 
       <div class="grid">
-        {layout.map((item, i) => (
+        {layout.map((item, i) => item.widget === "nowplaying" ? null : ( // music lives in the pill up top
           <div key={item.widget + i} style={{ display: "contents" }}>
             {editing ? (
               <div class={`tile ${item.size} edit`} draggable
@@ -90,6 +92,24 @@ export function Home() {
 
       <div class="sec-title" id="containers">Containers <span class="dim mono" style={{ fontSize: 12, fontWeight: 400 }}>{list.length}</span></div>
       <ContainerTable list={list} />
+    </div>
+  );
+}
+
+/** What the server's speaker is playing, as a small live pill top right, like on the wall. */
+function NowPill() {
+  const n = np.value;
+  if (!n || n.state === "stopped" || !n.title) return null;
+  const playing = n.state === "playing";
+  return (
+    <div class={`home-np ${playing ? "" : "paused"}`} title={`${n.title} · ${n.artist}${n.device ? ` · from ${n.device}` : ""}`}>
+      <span class="np-eq"><i /><i /><i /></span>
+      <span class="home-np-text">{n.title}{n.artist && <span class="dim"> · {n.artist}</span>}</span>
+      {n.controls && (
+        <button class="home-np-btn" aria-label={playing ? "Pause" : "Play"} onClick={() => control("playpause").catch(() => {})}>
+          <Icon name={playing ? "solar:pause-bold" : "solar:play-bold"} size={13} />
+        </button>
+      )}
     </div>
   );
 }

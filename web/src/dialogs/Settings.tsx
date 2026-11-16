@@ -4,6 +4,7 @@ import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { WeatherPlace } from "../wall/Wall";
 import { ASCII_CREDIT } from "../shell/Background";
+import type { SpeakerStatus } from "../../../server/src/protocol";
 
 type Bg = { name: string; module: string };
 
@@ -179,6 +180,7 @@ function AdminSettings() {
       </div>
 
       <MusicSettings f={f} set={set} />
+      <Speaker />
 
       <div class="sec-title">Appearance</div>
       <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
@@ -291,6 +293,96 @@ function MusicSettings({ f, set }: { f: Settings; set: (p: Partial<Settings>) =>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button class="btn" type="button" onClick={() => { setTest("Checking… (save first if you changed anything)"); api("/api/music/test").then(() => setTest("Connected.")).catch((e) => setTest((e as Error).message)); }}>Test connection</button>
           <span class="dim" style={{ fontSize: 13 }}>{test}</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ---------------- speaker (AirPlay / Spotify Connect on the server) ----------------
+/** navigator.clipboard is missing over plain http, so fall back to a hidden textarea. */
+function copyText(t: string) {
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t); return; }
+  const a = document.createElement("textarea"); a.value = t; a.style.position = "fixed"; a.style.opacity = "0";
+  document.body.appendChild(a); a.select(); try { document.execCommand("copy"); } catch {} a.remove();
+}
+
+function Fix({ cmd }: { cmd: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <div class="sp-fix">
+      <span class="dim">Run on the server, in the HarbourOS folder:</span>
+      <code class="mono">{cmd}</code>
+      <button class="btn" onClick={() => { copyText(cmd); setDone(true); setTimeout(() => setDone(false), 1500); }}>
+        <Icon name={done ? "solar:check-circle-linear" : "solar:copy-linear"} size={14} />{done ? "Copied" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
+const SP_NAME = { airplay: "AirPlay", spotify: "Spotify Connect" } as const;
+const SP_ICON = { airplay: "solar:screencast-2-linear", spotify: "solar:music-note-2-linear" } as const;
+const SP_TAG = { ok: ["Connected", "ok"], setup: ["Needs setup", "warn"], missing: ["Not installed", "off"], unknown: ["Unknown", "off"] } as const;
+const since = (t: number | null) => {
+  if (!t) return "No song seen yet";
+  const m = Math.round((Date.now() - t) / 60000);
+  return "Last song info " + (m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`);
+};
+
+function Speaker() {
+  const [st, setSt] = useState<SpeakerStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const load = () => { setBusy(true); setMsg(""); api<SpeakerStatus>("/api/nowplaying/status").then(setSt).catch((e) => setMsg((e as Error).message)).finally(() => setBusy(false)); };
+  useEffect(load, []);
+  const test = () => api("/api/nowplaying/test", { method: "POST" })
+    .then(() => { setMsg("Showing a sample song on the wall for 10 seconds."); setTimeout(() => setMsg(""), 10_000); })
+    .catch((e) => setMsg((e as Error).message));
+  const tag = (label: string, tone: string) => <span class={`tag sp-${tone}`}>{label}</span>;
+
+  return (
+    <>
+      <div class="sec-title">Speaker</div>
+      <div class="rows">
+        <div class="row muted" style={{ fontSize: 13 }}>
+          <Icon name="solar:speaker-minimalistic-linear" />
+          <span class="grow">Music sent to the server's speaker from a phone shows up on wall tablets, with play/pause and volume.</span>
+        </div>
+        {!st && <div class="row dim">{msg ? "" : "Checking…"}</div>}
+        {st && !st.host.ok && (
+          <div class="row sp-row">
+            <Icon name="solar:server-linear" />
+            <div class="grow"><div>Server access</div><div class="dim sp-sub">{st.host.detail}</div>{st.host.fix && <Fix cmd={st.host.fix} />}</div>
+            {tag("Not connected", "warn")}
+          </div>
+        )}
+        {st?.sources.map((s) => (
+          <div class="row sp-row" key={s.source}>
+            <Icon name={SP_ICON[s.source]} />
+            <div class="grow">
+              <div>{SP_NAME[s.source]}</div>
+              <div class="dim sp-sub">
+                {s.detail}{s.state === "ok" && <> · {since(s.lastEvent)}</>}
+                {s.state === "missing" && st.host.ok && <> Install it on the server, then check again.</>}
+              </div>
+              {s.fix && <Fix cmd={s.fix} />}
+            </div>
+            {s.state === "ok" && tag(s.controls ? "Controls work" : "No controls", s.controls ? "ok" : "off")}
+            {s.via && tag(s.via === "docker" ? "Docker" : "On the server", "off")}
+            {tag(SP_TAG[s.state][0], SP_TAG[s.state][1])}
+          </div>
+        ))}
+        {st && st.host.ok && (
+          <div class="row sp-row">
+            <Icon name="solar:volume-loud-linear" />
+            <div class="grow"><div>Volume</div><div class="dim sp-sub">{st.volume.detail}</div>{st.volume.fix && <Fix cmd={st.volume.fix} />}</div>
+            {st.volume.ok ? tag(`Works · ${st.volume.value}%`, "ok") : tag("Not working", "warn")}
+          </div>
+        )}
+        <div class="row" style={{ gap: 8 }}>
+          <button class="btn" onClick={load} disabled={busy}><Icon name="solar:refresh-linear" size={14} />{busy ? "Checking…" : "Check again"}</button>
+          <button class="btn" onClick={test}><Icon name="solar:play-linear" size={14} />Test on the wall</button>
+          <span class="dim" style={{ fontSize: 12.5 }}>{msg}</span>
         </div>
       </div>
     </>

@@ -50,6 +50,7 @@ function startSession(reply: FastifyReply, user: User) {
 /** What a member may call. Everything else needs admin. */
 function memberAllowed(method: string, url: string, role: string): boolean {
   const p = url.split("?")[0];
+  if (p === "/api/nowplaying/status") return false; // setup details are for admins
   // Wall screen: members and paired tablets.
   if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather" || p === "/api/calendar" || p.startsWith("/api/transit/") || p.startsWith("/api/music/") || p.startsWith("/api/nowplaying"))) return true;
   if (method === "PUT" && p === "/api/wall/profile") return true;

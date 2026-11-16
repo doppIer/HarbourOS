@@ -110,3 +110,19 @@ export interface NowPlaying {
   device?: string;           // who is sending, when known
   controls?: boolean;        // play/pause/next/previous work for this source
 }
+
+/** Settings → Speaker: what is set up and what still needs a command on the server. */
+export interface SpeakerSource {
+  source: "airplay" | "spotify";
+  state: "ok" | "setup" | "missing" | "unknown"; // setup: installed, not reporting yet
+  via: "host" | "docker" | null;                 // where the player runs
+  detail: string;
+  lastEvent: number | null;                      // last report from it (epoch ms), since HarbourOS started
+  controls: boolean;                             // play/pause/next/previous answer
+  fix?: string;                                  // command to run on the server
+}
+export interface SpeakerStatus {
+  sources: SpeakerSource[];
+  volume: { ok: boolean; value?: number; detail: string; fix?: string };
+  host: { ok: boolean; detail: string; fix?: string }; // can HarbourOS run commands on the server
+}
