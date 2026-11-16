@@ -42,6 +42,7 @@ export const hub = {
   /** "fast" when a visible client is connected, "slow" otherwise. */
   demand(): "fast" | "slow" { for (const c of clients) if (c.visible) return "fast"; return "slow"; },
   hasTopic(topic: string) { for (const c of clients) if (c.topics.has(topic)) return true; return false; },
-  appsInView(): Set<string> { const s = new Set<string>(); for (const c of clients) if (c.viewing) s.add(c.viewing); return s; },
+  /** Apps on screen right now: hidden tabs don't count, so a forgotten tab can't keep an app from idle-stopping. */
+  appsInView(): Set<string> { const s = new Set<string>(); for (const c of clients) if (c.viewing && c.visible) s.add(c.viewing); return s; },
   onChange(f: () => void) { listeners.push(f); },
 };

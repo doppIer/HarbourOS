@@ -85,7 +85,7 @@ export async function stopApp(appId: string) {
 export function startIdleWatcher() {
   setInterval(async () => {
     const viewing = hub.appsInView();
-    viewing.forEach(touch);
+    viewing.forEach((id) => { if (apps.get(id)) touch(id); });
     for (const app of apps.all()) {
       if (app.alwaysOn || !app.idleStopMinutes || appStatus(app) !== "running") continue;
       const last = lastActivity.get(app.id) ?? Date.now();

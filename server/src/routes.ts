@@ -85,6 +85,7 @@ export async function registerRoutes(app: FastifyInstance) {
       alwaysOn: false, startOnBoot: false, pinned: true, order: apps.all().length, section: "Apps", ...prev, ...body,
     };
     if (!a.name.trim() || !/^https?:\/\//.test(a.url)) throw Object.assign(new Error("Name and an http(s) URL are required."), { statusCode: 400 });
+    if (a.healthUrl && !/^https?:\/\//.test(String(a.healthUrl))) throw Object.assign(new Error("The health check address has to start with http:// or https://."), { statusCode: 400 });
     apps.put(a); publishApps();
     return a;
   });
@@ -113,7 +114,8 @@ export async function registerRoutes(app: FastifyInstance) {
   app.post("/api/containers/:name/:op", async (req) => {
     const { name, op } = req.params as { name: string; op: string };
     const found = findByName(name);
-    const c = found ?? { Id: name };
+    if (!found) throw Object.assign(new Error(`No container called ${name}.`), { statusCode: 404 });
+    const c = found;
     // Stopping HarbourOS (or its Docker proxy) from inside HarbourOS would cut you off.
     if ((op === "stop" || op === "remove") && found && isHarbor(found)) throw Object.assign(new Error("HarbourOS won't stop or remove itself. Use docker compose on the server for that."), { statusCode: 400 });
     if (op === "start") await docker.start(c.Id);
@@ -147,7 +149,13 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   // ---------- settings ----------
-  app.get("/api/settings", async () => settings.public());
+  // Members and wall tablets get only what the interface uses; addresses, accounts and paths stay with admins.
+  app.get("/api/settings", async (req) => {
+    const s = settings.public();
+    if (req.user?.role === "admin") return s;
+    const { accent, background, sidebarCollapsed, unmountAfterMinutes, currency, pricePerKwh } = s;
+    return { accent, background, sidebarCollapsed, unmountAfterMinutes, currency, pricePerKwh };
+  });
   app.put("/api/settings", async (req) => {
     const b = req.body as any;
     // The Navidrome password is never sent to the browser; keep it unless a new one comes in.
