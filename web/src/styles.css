@@ -606,3 +606,15 @@ a.it, a.btn { text-decoration: none; }
    No blur, so it costs little even over the moving background. */
 .wall-red { position: absolute; inset: 0; z-index: 60; pointer-events: none; background: #ff1f0f; mix-blend-mode: multiply;
   -webkit-backdrop-filter: grayscale(1) contrast(1.1); backdrop-filter: grayscale(1) contrast(1.1); animation: fade 2s ease; }
+
+/* Night view: big clock and weather instead of the tiles (red overlay on top) */
+.night { position: absolute; inset: 0; z-index: 25; display: grid; place-content: center; justify-items: center; gap: var(--s3); background: #000; color: #fff; cursor: pointer;
+  padding: var(--s6); text-align: center; animation: fade 1.2s ease; user-select: none; }
+.night-clock { font-size: clamp(120px, 24vw, 300px); font-weight: 200; line-height: .9; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.night-colon { opacity: .45; margin: 0 .02em; }
+.night-date { font-size: clamp(20px, 2.6vw, 30px); font-weight: 300; color: rgba(255,255,255,.6); }
+.night-wx { display: flex; align-items: center; gap: var(--s4); margin-top: clamp(24px, 5vh, 56px); color: rgba(255,255,255,.85); }
+.night-temp { font-size: clamp(40px, 5vw, 60px); font-weight: 200; letter-spacing: -.03em; }
+.night-desc { display: grid; text-align: left; font-size: 17px; gap: 2px; }
+.night-desc .dim { color: rgba(255,255,255,.5); font-size: 15px; white-space: pre; }
+.wall.nightview :is(.wall-inner, .wall-section, .wall-rail, .np, .np-mini) { visibility: hidden; }

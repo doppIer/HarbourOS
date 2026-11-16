@@ -12,6 +12,7 @@ import { BackgroundLayer, ASCII_CREDIT } from "../shell/Background";
 import { DJ } from "./DJ";
 import { NowPlaying, current as nowTrack } from "./player";
 import { Stage, useStage, watchNowPlaying, np } from "./Stage";
+import { Night } from "./Night";
 
 export interface Screen {
   dim: { on: boolean; from: string; to: string; level: number };
@@ -85,13 +86,21 @@ export function Wall() {
   };
 
   const fx = useScreen(p?.screen);
+  // Night mode shows only the clock and weather; a tap peeks at the tiles for a while.
+  const [peekUntil, setPeekUntil] = useState(0);
+  useEffect(() => {
+    if (!peekUntil) return;
+    const t = setTimeout(() => setPeekUntil(0), Math.max(0, peekUntil - Date.now()));
+    return () => clearTimeout(t);
+  }, [peekUntil]);
+  const night = fx.red && !peekUntil && !editing && !sheet && !open;
 
   if (err && !p) return <div class="wall"><div class="wall-msg">{err}</div></div>;
   if (!p) return <div class="wall" />;
 
   return (
-    <div class={`wall ${p.look.theme} ${stage.open ? "staged" : ""}`} style={{ "--glass": p.look.glass / 100 } as any} onPointerDownCapture={fx.touch}>
-      {p.look.background !== "none" && <BackgroundLayer module={p.look.background} theme={p.look.theme} paused={!!open || fx.dim > 0 || fx.saver || stage.open} />}
+    <div class={`wall ${p.look.theme} ${stage.open ? "staged" : ""} ${night ? "nightview" : ""}`} style={{ "--glass": p.look.glass / 100 } as any} onPointerDownCapture={fx.touch}>
+      {p.look.background !== "none" && <BackgroundLayer module={p.look.background} theme={p.look.theme} paused={!!open || fx.dim > 0 || fx.saver || stage.open || night} />}
       <nav class="wall-rail" aria-label="Wall">
         {me.value?.role !== "device" && <a class="wall-rail-btn" href="/" aria-label="Back to the desktop" title="Desktop"><Icon name="solar:home-2-linear" size={24} /></a>}
         <button class={`wall-rail-btn ${section === "tiles" && !editing ? "on" : ""}`} aria-label="Tiles" title="Tiles" onClick={() => setSection("tiles")}><Icon name="solar:widget-4-linear" size={22} /></button>
@@ -145,6 +154,7 @@ export function Wall() {
           <span class="np-eq"><i /><i /><i /></span>{np.value.title}<span class="dim"> · {np.value.artist}</span>
         </button>
       )}
+      {night && <Night onPeek={() => setPeekUntil(Date.now() + Math.max(15, p.screen.wake.seconds) * 1000)} />}
       <Stage open={stage.open} onClose={stage.dismiss} />
 
       {open && (
