@@ -38,7 +38,7 @@ Everything in detail. For the short version, see the [README](../README.md).
   </tr>
   <tr>
     <td><img src="screenshots/settings-users.png" alt="Settings page with user roles, sign-up toggle and sign-in background"><br><sub><b>Users and settings.</b> Approve sign-ups, change roles, pick backgrounds.</sub></td>
-    <td><img src="screenshots/claude.png" alt="Claude chat empty state with suggested questions"><br><sub><b>Claude.</b> Asks about your server; actions need your tap.</sub></td>
+    <td><img src="screenshots/claude.png" alt="AI page with Claude Code, Codex, Gemini CLI, Hermes and local Ollama models"><br><sub><b>AI.</b> Assistants that can look at your server; actions need your tap.</sub></td>
   </tr>
   <tr>
     <td><img src="screenshots/store.png" alt="App store with the most-downloaded app per category and a grid of apps with download counts and memory"><br><sub><b>Store.</b> Most-downloaded first, search and categories.</sub></td>
