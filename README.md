@@ -7,304 +7,77 @@
 
 <p align="center">
   <b>A self-hosted desktop for your home server, in one browser tab.</b><br>
-  Open every service, start and stop containers, watch the machine live, and use a terminal and Claude without leaving the page.
+  Open every service, run containers, use a terminal and Claude, and turn a spare tablet into a wall display.
 </p>
 
 <p align="center">
-  <img alt="Node 22" src="https://img.shields.io/badge/Node-22-3F3DB8?style=flat-square&logo=nodedotjs&logoColor=F3E9DC">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3F3DB8?style=flat-square&logo=typescript&logoColor=F3E9DC">
-  <img alt="Preact" src="https://img.shields.io/badge/Preact-signals-3F3DB8?style=flat-square&logo=preact&logoColor=F3E9DC">
   <img alt="Docker Compose" src="https://img.shields.io/badge/Docker-compose-3F3DB8?style=flat-square&logo=docker&logoColor=F3E9DC">
-  <img alt="Tailscale only" src="https://img.shields.io/badge/Tailscale-only-3F3DB8?style=flat-square&logo=tailscale&logoColor=F3E9DC">
-  <img alt="PWA" src="https://img.shields.io/badge/PWA-desktop%20%2B%20iPhone-3F3DB8?style=flat-square&logo=pwa&logoColor=F3E9DC">
+  <img alt="Tailscale" src="https://img.shields.io/badge/Tailscale-private-3F3DB8?style=flat-square&logo=tailscale&logoColor=F3E9DC">
+  <img alt="PWA" src="https://img.shields.io/badge/PWA-desktop%20%2B%20tablet-3F3DB8?style=flat-square&logo=pwa&logoColor=F3E9DC">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3F3DB8?style=flat-square&logo=typescript&logoColor=F3E9DC">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="HarbourOS home dashboard: sidebar with apps and status dots, system load chart, CPU, memory, power, network, disk and savings tiles" width="100%">
+  <img src="docs/screenshots/home.png" alt="HarbourOS desktop: sidebar with apps and status dots, system load chart and stat tiles" width="100%">
 </p>
 
-<p align="center"><sub>Screenshots use the built-in demo mode (<code>HARBOR_DEMO=1</code>), so the numbers are simulated.</sub></p>
+## Quick start
 
----
-
-## What it does
-
-|  |  |
-|---|---|
-| **Sidebar of your services** | Linear-style, collapsible, with live status dots: grey stopped, amber starting, green running, red crash-looping. Drag to reorder, right-click or long-press for Restart, Stop, Logs, Edit. |
-| **Start on demand** | Opening a stopped app starts its container, or its whole compose stack in dependency order, and shows a boot screen until the health check passes. |
-| **Idle auto-stop** | Apps nobody has used for N minutes are stopped to save power. "Always on" apps (Home Assistant, bots) are never touched. Works alongside Sablier and Traefik. |
-| **Files** | Browse, edit, upload and download files on the server. Runs as the terminal user on the host, so it can only touch what that user can. |
-| **App store** | 183 apps from the CasaOS catalog, sorted by Docker Hub downloads. Pick ports and folders, install with one click, and the app lands in the sidebar. |
-| **Live dashboard** | CPU per core, temperature, RAM, swap, disks, network, Tailscale, estimated watts and monthly cost, and how much stopped containers are saving. |
-| **Widgets you edit as files** | Every tile is a small JS file in `data/widgets/`. Save it and the tile reloads in every open browser, with no build or restart. |
-| **Terminal** | xterm.js tabs backed by tmux on the host, so sessions survive closing the browser. iPhone gets an extra key row. |
-| **Find on server** | Add app → Find on server lists containers with a published port that aren't in the sidebar yet, with names and icons from the store catalog. Tick and add. |
-| **Frame proxy** | Apps that forbid iframes (Nextcloud, Proxmox, …) get an "Open in new tab" card, or "Show it here anyway": HarbourOS serves the app on its own port (7081-7090) and drops only `X-Frame-Options` and CSP `frame-ancestors`. |
-| **Wall (tablet)** | `/wall`: a full-screen touch home screen for a tablet that stays on. Clock, weather (Open-Meteo, no key), server vitals and app launcher tiles; long press to edit. Night dimming, wake on touch, burn-in shift, screensaver and keep-awake are set per tablet. Pair a tablet from Settings → Tablets with a QR code; it can only see the wall and open apps. |
-| **AI** | Pick an assistant: Claude Code, Gemini CLI, Codex or Hermes Agent, each in its own tmux session on the server. The first open installs it (user-level, no sudo) and shows its own sign-in. Local models run through Ollama (on the host or in its container). |
-| **Accounts** | Admin and member roles, sign-up with admin approval, scrypt-hashed passwords, and a forgot-password flow that works without email. Members see the dashboard and open apps; only admins get the terminal, Claude and controls. |
-| **Light on the box it watches** | One Node process (~40 MB idle), one WebSocket per tab, stats collected once and fanned out, slowing to every 30 s when nobody's looking. ~29 KB gzipped main bundle; terminal and Claude load on demand. |
-
-## Screenshots
-
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/login.png" alt="Sign-in screen with a soft indigo glow and a pill-shaped email field"><br><sub><b>Sign in.</b> One field at a time; the background is a replaceable slot.</sub></td>
-    <td width="50%"><img src="docs/screenshots/login-typing.png" alt="Sign-in screen while typing, with the heading blurred"><br><sub><b>Focus.</b> The heading softens while you type.</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/home-containers.png" alt="Activity list with an idle stack and a crash-looping container, above the containers table"><br><sub><b>Activity and containers.</b> Idle stacks and crash loops are called out with one-click actions.</sub></td>
-    <td><img src="docs/screenshots/home-collapsed.png" alt="Dashboard with the sidebar collapsed to an icon rail"><br><sub><b>Collapsed sidebar.</b> An icon rail that keeps the status dots.</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/customize.png" alt="Customize mode with tiles that can be reordered, resized and removed"><br><sub><b>Customize.</b> Reorder, resize, add and remove tiles.</sub></td>
-    <td><img src="docs/screenshots/add-app.png" alt="Add app dialog with Solar icon search, service URL, container picker and auto start/stop options"><br><sub><b>Add app.</b> Icon search, containers or a compose stack, health check, auto start and stop.</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/settings-users.png" alt="Settings page with user roles, sign-up toggle and sign-in background"><br><sub><b>Users and settings.</b> Approve sign-ups, change roles, pick backgrounds.</sub></td>
-    <td><img src="docs/screenshots/claude.png" alt="Claude chat empty state with suggested questions"><br><sub><b>Claude.</b> Asks about your server; actions need your tap.</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/store.png" alt="App store with the most-downloaded app per category and a grid of apps with download counts and memory"><br><sub><b>Store.</b> Most-downloaded first, search and categories.</sub></td>
-    <td><img src="docs/screenshots/store-detail.png" alt="Install panel for Immich with stack name, ports, data folders and a sleep-when-idle option"><br><sub><b>Install.</b> Ports, folders and idle sleep; view the compose file first.</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/files.png" alt="Files app with a folder list on the left and a compose file open in the editor on the right"><br><sub><b>Files.</b> Edit configs on the server; ⌘S saves.</sub></td>
-    <td><img src="docs/screenshots/forgot-password.png" alt="Reset your password screen with an email field"><br><sub><b>Forgot password.</b> A one-time code from the server log or an admin.</sub></td>
-  </tr>
-</table>
-
-<p align="center">
-  <img src="docs/screenshots/mobile-home.png" alt="HarbourOS dashboard on an iPhone" width="260">
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/mobile-menu.png" alt="Slide-out menu on an iPhone" width="260">
-</p>
-<p align="center"><sub>On iPhone: installable as a PWA, safe-area aware, with a slide-out menu.</sub></p>
-
-## How it fits together
-
-```
-browser ──(Tailscale)──► harbor (Node/Fastify) ──► docker-socket-proxy ──► dockerd
-                              │  /host/proc, /host/sys (read-only)
-                              │  ssh → host tmux (terminal, claude)
-                              └  SQLite in ./data
-```
-
-- **Backend:** Node 22 + TypeScript + Fastify. One collection loop reads `/proc`, `/sys` and Intel RAPL, and pushes to every open tab over a single multiplexed WebSocket.
-- **Store installs and Files:** run on the host over SSH as the terminal user (see [App store](#app-store) and [Files](#files)), not through the proxy.
-- **Docker:** only through [`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy) with list, inspect, logs, events, start, stop and restart. The raw socket is never mounted into the web container.
-- **Frontend:** Preact + signals + Vite. Charts are canvas on one shared `requestAnimationFrame` loop that pauses while the tab is hidden.
-- **Storage:** SQLite for apps, settings, accounts, energy history and Claude conversations.
-
-## Setup
-
-On the server, in this folder:
+You need a Linux server with Docker and Docker Compose. [Tailscale](https://tailscale.com) is recommended, so only your own devices can reach it.
 
 ```bash
-cp .env.example .env              # set TAILSCALE_IP, SESSION_SECRET
-mkdir -p data && cp config/harbor.example.json data/harbor.json   # edit URLs/containers to match yours
-sudo bash host/setup-terminal.sh  # tmux + SSH key for the browser terminal
-sudo bash host/rapl-permissions.sh   # optional, for the power estimate
+git clone https://github.com/doppIer/HarbourOS.git
+cd HarbourOS
+cp .env.example .env      # put your server's Tailscale IP in TAILSCALE_IP
 docker compose up -d --build
 ```
 
-Open `http://<TAILSCALE_IP>:7080`. The first visit shows **Set up HarbourOS**: the account you create there is the admin.
+Open `http://<TAILSCALE_IP>:7080` and create the first account: that's the admin.
 
-`data/harbor.json` is read only on first boot. After that, apps live in SQLite and you manage them from the UI.
+Optional, each one command on the server (in the HarbourOS folder):
+
+| What | Command |
+|---|---|
+| Browser terminal and Files over SSH | `sudo bash host/setup-terminal.sh` |
+| HTTPS on your tailnet (needed for some browser features) | `sudo bash host/setup-https.sh` |
+| Now Playing for AirPlay / Spotify Connect on the server's speaker | `sudo bash host/setup-nowplaying.sh` |
+| Real CPU power readings | `sudo bash host/rapl-permissions.sh` |
+
+Update later with:
+
+```bash
+git pull && docker compose up -d --build
+```
 
 > [!IMPORTANT]
-> **Never expose port 7080 to the internet.** Compose binds it to your Tailscale IP only.
+> Don't expose port 7080 to the internet. Compose binds it to your Tailscale IP only.
 
-To serve it over HTTPS with Tailscale identities:
+## What's inside
 
-```bash
-tailscale serve --bg 7080
-```
+**Desktop**
+- Every self-hosted app in one sidebar, opened inside HarbourOS (or in a tab when an app refuses frames). Stopped apps start when you open them and can stop again when idle.
+- Live dashboard with editable widgets: CPU, memory, power and cost, network, disks, containers.
+- Containers: start, stop, restart, remove, logs.
+- App store with the CasaOS catalog, with a clear warning before anything gets deep access to the host.
+- Files, a browser terminal (tmux), and Claude / local models that can look at your server and propose actions you approve.
+- Accounts for the household: admins and members, sign-up with approval.
 
-Then set `TRUST_TAILSCALE_HEADERS=1` and `TAILSCALE_ALLOWED_USERS=you@example.com` in `.env`. Each allowed login must match the email of an active HarbourOS account. When header auth is on, keep 7080 bound to `127.0.0.1` so only `tailscale serve` can reach it.
+**Wall mode** (`/wall`, made for a tablet that stays on)
+- Ready-made layouts (Home, Agenda, Commute, Bedside, Server) or your own; each person and each tablet has their own wall.
+- Clock (big digits, watch face or flip cards), weather, calendar (iCloud / Google share link), bus and tram departures from any GTFS timetable, server stats.
+- **Now Playing:** play to the server's speaker from your phone (AirPlay or Spotify Connect) and the wall shows the song full screen, with controls and volume.
+- **DJ mode** for your Navidrome library.
+- **Night mode:** from midnight to 6 a.m. everything turns red and the wall shows only the time and weather.
+- ASCII animal backgrounds, light and dark, screen dimming, burn-in protection, pairing tablets with a code.
 
-## Accounts
+## Security in short
 
-- **Admin:** can do everything.
-- **Member:** sees the dashboard and opens apps. Can't use the terminal, Claude, container controls or settings; the server enforces this, not just the UI.
-- **Sign-up:** the sign-in screen has a Sign up link while **Settings → Sign-in screen → Show "Sign up"** is on (the default). New accounts wait as "pending" until an admin approves them under **Settings → Users**, where you can also change roles or delete accounts. HarbourOS always keeps at least one admin.
-- **Passwords:** stored as scrypt hashes. Changing your password signs out your other devices.
-- **Forgot password:** HarbourOS doesn't send email. **Forgot password?** on the sign-in screen writes a one-time code to the server log; read it on the server with
+Every API and WebSocket needs a session, members can't reach admin actions, and the app runs as an unprivileged user. The terminal is a real shell on your host and its user can run Docker, so **admin means root on the server**: give it only to people you'd trust with that. Details in the [guide](docs/GUIDE.md#security-notes).
 
-  ```bash
-  docker compose logs harbor | grep -A2 "password reset"
-  ```
+## More
 
-  Or an admin clicks **Reset password** next to the user in **Settings → Users** and passes the code on. Codes are 8 characters, work once, expire after 15 minutes and burn after 5 wrong tries. Resetting signs the account out everywhere. The response is the same whether or not the email exists, so the form can't be used to find accounts.
-
-## Adding an app
-
-Click **Add app** in the sidebar. You can set:
-
-- name and icon (search Solar icons, upload a file, or paste a URL from Dashboard Icons or simple-icons)
-- service URL
-- the containers it uses, or a whole compose project
-- a health check URL
-- whether it starts when opened, stops after N idle minutes, starts on boot, or is always on
-
-Link-only apps (no container) work too. Everything is saved on the server.
-
-Some apps refuse to load inside an iframe because of `X-Frame-Options` or a CSP `frame-ancestors` header. For those, remove the header in your reverse proxy, or use **Open in new tab**.
-
-## Files
-
-**Files** in the sidebar (admins only) browses the server's filesystem: open folders, edit text files (line numbers, ⌘S / Ctrl+S to save), preview images, upload by dropping files onto the list, download, rename, create and delete. Right-click or long-press a row for its menu.
-
-Every operation runs **on the host as the terminal user** over the same SSH connection as the terminal and store, not inside the container. So Files can only read or change what that user can: by default your home folder, `~/harbor-stacks`, and anything you've given the user access to. Root-owned files under `/etc` are readable but saving them fails with *Permission denied*. HarbourOS won't delete top-level folders like `/home` or anything under `/proc`, `/sys`, `/dev` or `/boot`.
-
-Saving is refused if the file changed on disk after you opened it. Text files up to 5 MB open in the editor; uploads are limited to 200 MB each.
-
-## App store
-
-**Store** in the sidebar (admins only) lists the [CasaOS AppStore](https://github.com/IceWhaleTech/CasaOS-AppStore) catalog (Apache-2.0), with pull counts from Docker Hub. The catalog is fetched on first visit (about 20 seconds: only each app's compose file and icon, not the 250 MB repo) and cached in `data/store/`. **Update catalog** fetches it again.
-
-When you install an app, HarbourOS rewrites its compose file for your server:
-
-- `/DATA/AppData` becomes your app data folder and the rest of `/DATA` becomes your media folder (defaults `/srv/harbor/appdata` and `/srv/harbor/media`, remembered for next time)
-- ports you pick replace the catalog's; ports other containers already use are refused
-- devices and host folders your machine doesn't have (many entries target Raspberry Pi) are removed, and the panel lists what was removed
-- privileged containers, the host network, the Docker socket and mounts of `/`, `/etc` and similar need an extra confirmation
-- **View compose** shows the exact file before you install
-
-It then runs `docker compose up -d` **on the host** over the terminal's SSH connection, so the user from `host/setup-terminal.sh` must be in the `docker` group. Stacks live in `~/harbor-stacks/<name>/` on the host as ordinary compose projects. The docker-socket-proxy keeps its start/stop-only permissions; it never gets image pull or create rights. Progress streams into the panel, and the finished app appears in the sidebar with start on demand, plus a 30-minute idle stop if you left **Sleep when idle** on.
-
-**Uninstall** runs `docker compose down` and removes the stack folder. Its data is only deleted if you tick the box.
-
-> [!NOTE]
-> Catalog entries are maintained by the CasaOS community. Read the compose file for anything you don't recognise; image tags in the catalog can lag behind upstream.
-
-## Dashboard widgets
-
-Every tile on Home is a plain ES module in `data/widgets/`. Edit a file and save, and that tile reloads in every open browser. If you break a widget, only its tile shows the error. Delete the file to get the default back. **Customize** on Home writes the layout to `data/widgets/layout.json`.
-
-```js
-// data/widgets/my-widget.js
-export default {
-  title: "Uptime",
-  sizes: ["s", "m"],
-  mount(el, { ui, size, actions }) {
-    const n = ui.bigNumber(el, { label: "Uptime", unit: " days" });
-    const spark = ui.sparkline(el, { color: ui.theme.teal });
-    return {
-      update({ stats, containers, apps, history }) {
-        n.set((stats.uptime / 86400).toFixed(1));
-        spark.set(history.cpu);
-      },
-      destroy() {},
-    };
-  },
-};
-```
-
-`ctx.ui` gives you:
-
-- `bigNumber`, `sparkline`, `area` (layered area chart with crosshair and trend card), `bar`, `legend`
-- `h` (a tiny element builder)
-- `fmt` (`bytes`, `rate`, `pct`, `dur`, `ago`) and `theme` colors
-
-`update` runs only when live data arrives. `actions.container(name, "start" | "stop" | "restart")` and `actions.open(view)` are available too. The data shapes are in `server/src/protocol.ts`.
-
-## Backgrounds
-
-The desktop and the sign-in screen each have a background slot (**Settings → Appearance** and **Settings → Sign-in screen**). Choose None, the built-in "aura" glow, an image or video URL, or your own module in `data/backgrounds/<name>/index.js`, with no rebuild:
-
-```js
-export function mount(el, { reducedMotion }) {
-  // draw into el (canvas, DOM, …) using requestAnimationFrame
-  return { pause() {}, resume() {}, destroy() {} };
-}
-```
-
-HarbourOS calls `pause()` when the tab is hidden or an app is open (both toggles are in Settings) and `resume()` when it's visible again. The background runs in its own isolated layer, with dim and blur controls. A blank template ships as `/backgrounds/template/index.js`.
-
-## Auto start and stop, Sablier and Traefik
-
-- **Start on demand:** opening an app starts its containers, or its whole compose stack in `depends_on` order.
-- **Idle stop:** an app counts as in use while any client is viewing it or something calls `POST /api/apps/<id>/activity`. Once it has been idle longer than its limit, it's stopped, stacks in reverse dependency order.
-- **Traffic from outside HarbourOS:** if you reach a service directly (for example Jellyfin from your TV) through Traefik with the [Sablier](https://github.com/sablierapp/sablier) plugin, let Sablier own those containers: give them `sablier.enable=true` and `sablier.group=<app-id>` labels, and set that app's idle stop to 0 in HarbourOS. HarbourOS still shows status and can start them. To have HarbourOS own idle stop instead, point an access-log hook or a Traefik `forwardAuth` middleware at `POST /api/apps/<id>/activity` with a session cookie.
-
-## Power numbers
-
-Live watts are **an estimate**: Intel RAPL CPU-package power plus a configurable baseline for the board, disks and PSU loss (**Settings → Power**). Add a Home Assistant smart-plug entity in Settings to use a real reading instead. Daily kWh is stored in SQLite; the monthly cost is the 30-day average times your price per kWh.
-
-## Terminal and Claude
-
-- **Terminal:** every tab is a `tmux` session on the **host**, reached over SSH with a key only the container has.
-- **Claude chat:** uses `ANTHROPIC_API_KEY` on the server; the key never reaches the browser. The model defaults to `claude-opus-5-5` (change with `CLAUDE_MODEL`). Requests opt into the server-side refusal fallback (`server-side-fallback-2026-07-01`).
-- **Claude Code:** a tmux session running `claude` on the host as the terminal user. If it's missing, the tab installs it with the official installer (`~/.local/bin`), then Claude Code asks you to sign in once.
-
-## Security notes
-
-- The web container never sees the Docker socket; exec, images, volumes, networks and build stay disabled in the proxy.
-- Every `/api` and `/ws` route requires a session, checked against the route that will actually run (encoded paths can't slip past). Members get a 403 on admin routes. Login and sign-up are rate-limited; session cookies are signed, `HttpOnly` and `SameSite=Strict`.
-- Writes and WebSockets from another origin are refused, so a page on another port of the same machine can't use your session (for example to open the terminal).
-- `X-Forwarded-*` and Tailscale identity headers are only believed from a proxy on the same machine (Tailscale Serve), never from other containers or tailnet devices.
-- Apps shown through the frame proxy (ports 7081-7090) need a HarbourOS session, and never receive HarbourOS's own cookies.
-- Members and wall tablets can only use timetable (GTFS) links an admin has opened once; the server never downloads a new link for them.
-- Password reset codes from "Forgot password" are written to the container log (`docker compose logs harbor`). Anyone who can read that log can reset accounts.
-- Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin` and `frame-ancestors 'self'`.
-- Until the first account exists, anyone who can reach port 7080 can create the admin. Set it up right after `docker compose up`, or set `HARBOR_PASSWORD` in `.env`.
-- `/proc`, `/sys` and `/` are mounted read-only; `/` is used only for disk usage numbers.
-- The terminal is a full shell on your host, and its user (`harbor`) is in the `docker` group so the app store can run `docker compose`: in practice that's root on the host. Give admin only to people you'd give root.
-- The forwarded-header rule above trusts loopback and the server's own `TAILSCALE_IP` (where Tailscale Serve connects from). Add any other proxy in front of HarbourOS to `TRUSTED_PROXIES`.
-- Each signed-in user and each paired tablet has a wall layout of its own.
-
-## Development
-
-```bash
-cd server && npm install && TERMINAL_MODE=local DATA_DIR=../data npx tsx watch src/index.ts
-cd web && npm install && npm run dev   # proxies /api, /ws, /widgets to :7080
-```
-
-Add `HARBOR_DEMO=1` to the server command to get simulated stats and ~29 containers, handy on a laptop without Docker or `/proc`. Never use it on the real server.
-
-```
-server/src/   index, auth, users, hub (WS fan-out), db, demo, collectors/, docker/, lifecycle/, terminal/, ai/, widgets/, protocol.ts
-web/src/      shell/ (Sidebar, AppHost, Background, ContextMenu), home/, widgets/ (runtime + ui), apps/terminal, apps/ai, dialogs/
-defaults/widgets/   shipped widget modules + layout, copied to data/widgets on first boot
-host/         one-time host setup scripts
-config/       sample apps
-docs/         brand assets and screenshots
-```
-
-## Brand
-
-<p align="center">
-  <img src="docs/brand/variants.png" alt="HarbourOS ship mark in indigo #3F3DB8, light indigo #7B7BF0, cream #F3E9DC, and as an app icon on indigo" width="100%">
-</p>
-
-| Color | Hex | Use |
-|---|---|---|
-| Indigo | `#3F3DB8` | Mark, app icon background |
-| Light indigo | `#7B7BF0` | Default accent in the UI |
-| Cream | `#F3E9DC` | Mark on dark, app icon foreground |
-
-## HTTPS
-
-Browsers only allow some features (microphone, camera, installing as an app) on https pages. Tailscale Serve gives HarbourOS a real certificate on your tailnet name, reachable only from your own devices:
-
-1. In the Tailscale admin console, turn on **MagicDNS** and **HTTPS certificates** (DNS page).
-2. On the server, in the HarbourOS folder: `sudo bash host/setup-https.sh`
-3. Open `https://<server>.<tailnet>.ts.net` and pair the tablet again from that address.
-
-The old `http://<tailscale-ip>:7080` keeps working. On the https address, apps that only speak plain http (most self-hosted apps) open in a new tab, because browsers don't show http pages inside https ones. `sudo bash host/setup-https.sh off` undoes it.
-
-## Wall tablet
-
-1. Settings → Tablets → **Add tablet**, then scan the QR code with the tablet (or open `/wall` on it and type the code).
-2. On the tablet, long press any tile to edit: add tiles, resize, reorder, and open **Screen** for dimming, burn-in protection and the screensaver.
-3. Keeping the screen on needs HarbourOS over https. With Tailscale: `sudo tailscale serve --bg 7080`, then use `https://<machine>.<tailnet>.ts.net/wall`. On Android, a kiosk browser (e.g. Fully Kiosk) can keep the screen on instead.
-
-
-## Now playing on the wall
-
-If the server drives a speaker with **shairport-sync** (AirPlay) or **raspotify** (Spotify Connect), the wall shows what your phone is playing there, full screen with the cover, and puts it away when the music stops. On the server, in the HarbourOS folder: `sudo bash host/setup-nowplaying.sh` (`... off` removes it). It turns on shairport's metadata pipe, adds a librespot event hook, and both report to HarbourOS with a private token from `data/nowplaying.token`.
+- [Full guide](docs/GUIDE.md): setup details, apps, store, widgets, backgrounds, HTTPS, wall, development.
+- Try it without a server: `HARBOR_DEMO=1` simulates data (the screenshots use it).
 
 ## Credits
 
