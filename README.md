@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="HarbourOS desktop: sidebar with apps and status dots, system load chart and stat tiles" width="100%">
+  <img src="docs/screenshots/home.png" alt="HarbourOS desktop: sidebar with apps, live stats, and a small now-playing pill next to Customize" width="100%">
 </p>
 
 ## Quick start
@@ -69,6 +69,23 @@ git pull && docker compose up -d --build
 - **DJ mode** for your Navidrome library.
 - **Night mode:** from midnight to 6 a.m. everything turns red and the wall shows only the time and weather.
 - ASCII animal backgrounds, light and dark, screen dimming, burn-in protection, pairing tablets with a code.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/wall.png" alt="Wall mode: big clock over an ASCII koi background, weather, now playing and server tiles"><br><sub><b>Wall mode.</b> Big clock, weather, music and server at a glance.</sub></td>
+    <td width="50%"><img src="docs/screenshots/now-playing.png" alt="Full-screen Now Playing with cover, song, progress, controls and volume"><br><sub><b>Now Playing.</b> Opens by itself when your phone plays to the server.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/night.png" alt="Night mode: big red clock and weather on black"><br><sub><b>Night mode.</b> Red, dark, only time and weather.</sub></td>
+    <td><img src="docs/screenshots/wall-watch.png" alt="Wall with a watch-face clock"><br><sub><b>Watch face.</b> One of three clock styles.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/night-watch.png" alt="Night mode with a red watch face"><br><sub><b>Night watch face.</b></sub></td>
+    <td><img src="docs/screenshots/dj.png" alt="DJ mode with album grid and big player controls"><br><sub><b>DJ mode.</b> Your Navidrome library on the tablet.</sub></td>
+  </tr>
+</table>
+
+<p align="center"><sub>Screenshots use the built-in demo mode (<code>HARBOR_DEMO=1</code>); the music is a made-up example.</sub></p>
 
 ## Security in short
 
