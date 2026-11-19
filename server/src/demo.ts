@@ -75,6 +75,8 @@ export function demoContainers(): { raw: RawContainer[]; info: ContainerInfo[] }
       cpu: state === "running" ? Math.max(0, cpu + noise(cpu * 0.6)) : undefined,
       mem: state === "running" ? mem * MB * (1 + noise(0.04)) : undefined,
       health: state === "running" && i % 5 === 0 ? "healthy" : undefined,
+      ips: state === "running" ? [{ network: (stack ?? "bridge") + (stack ? "_default" : ""), ip: `172.18.0.${i + 2}` }] : [],
+      ports: state === "running" && i % 3 === 0 ? [{ public: 8000 + i, private: 80, type: "tcp", ip: "0.0.0.0" }] : [],
       ...extra,
     });
   });

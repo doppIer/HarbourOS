@@ -16,6 +16,7 @@ import { appStatus, ensureStarted, publishApps, stopApp, touch } from "./lifecyc
 import { appContainers, restartGroup } from "./docker/stacks.js";
 import { attach, killSession, listSessions } from "./terminal/pty.js";
 import { chat, approveAction, listChats, loadChat, deleteChat } from "./ai/claude.js";
+import { tailscaleStatus } from "./tailscale.js";
 import { listWidgets, widgetDir, widgetFile } from "./widgets/store.js";
 import type { AppConfig } from "./protocol.js";
 import { clean, hostfs, httpError } from "./files/hostfs.js";
@@ -111,6 +112,7 @@ export async function registerRoutes(app: FastifyInstance) {
 
   // ---------- containers ----------
   app.get("/api/containers", async () => containers);
+  app.get("/api/tailscale", async () => tailscaleStatus());
   app.post("/api/containers/:name/:op", async (req) => {
     const { name, op } = req.params as { name: string; op: string };
     const found = findByName(name);

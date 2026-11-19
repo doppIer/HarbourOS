@@ -15,7 +15,8 @@ async function api(p: string, init?: RequestInit) {
 export interface RawContainer {
   Id: string; Names: string[]; Image: string; State: string; Status: string;
   Labels: Record<string, string>;
-  Ports?: { PublicPort?: number; PrivatePort: number; Type: string }[];
+  Ports?: { IP?: string; PublicPort?: number; PrivatePort: number; Type: string }[];
+  NetworkSettings?: { Networks?: Record<string, { IPAddress?: string }> };
 }
 
 export const docker = {
@@ -94,6 +95,12 @@ export function toInfo(c: RawContainer, extra: Partial<ContainerInfo> = {}): Con
     state: c.State,
     health: /\((healthy|unhealthy|health: starting)\)/.exec(c.Status)?.[1]?.replace("health: ", ""),
     restartCount: 0,
+    ips: Object.entries(c.NetworkSettings?.Networks ?? {})
+      .filter(([, n]) => n.IPAddress).map(([network, n]) => ({ network, ip: n.IPAddress! })),
+    // one entry per published port (Docker lists IPv4 and IPv6 bindings separately)
+    ports: [...new Map((c.Ports ?? []).filter((p) => p.PublicPort)
+      .map((p) => [`${p.PublicPort}/${p.Type}`, { public: p.PublicPort!, private: p.PrivatePort, type: p.Type, ip: p.IP }])).values()]
+      .sort((a, b) => a.public - b.public),
     ...extra,
   };
 }

@@ -36,6 +36,21 @@ export interface ContainerInfo {
   idleSince?: number;         // epoch ms, cpu ~0 since
   lastMem?: number;           // RAM/CPU last seen while running (for savings)
   lastCpu?: number;
+  ips?: { network: string; ip: string }[];                                   // address on each Docker network
+  ports?: { public: number; private: number; type: string; ip?: string }[]; // published to the host
+}
+
+export interface TailscaleStatus {
+  available: boolean;         // false: no tailscaled socket mounted, only the interface check below
+  online: boolean;
+  backendState?: string;      // Running | Stopped | NeedsLogin | ...
+  tailnet?: string;
+  magicDNSSuffix?: string;
+  self?: { name: string; dnsName: string; ips: string[]; os: string; exitNode: boolean };
+  peers: { name: string; dnsName: string; ips: string[]; os: string; online: boolean; lastSeen?: string; exitNode: boolean; exitNodeOption: boolean }[];
+  health: string[];
+  version?: string;
+  keyExpiry?: string;
 }
 
 export interface Stats {
