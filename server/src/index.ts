@@ -46,7 +46,7 @@ await registerNowPlaying(app);
 if (fs.existsSync(env.publicDir)) {
   await app.register(fastifyStatic, {
     root: env.publicDir, wildcard: true,
-    setHeaders: (res, p) => res.setHeader("Cache-Control", p.includes(`${path.sep}assets${path.sep}`) ? "public, max-age=31536000, immutable" : "no-cache"),
+    setHeaders: (res, p) => res.header("Cache-Control", p.includes(`${path.sep}assets${path.sep}`) ? "public, max-age=31536000, immutable" : "no-cache"),
   });
   app.setNotFoundHandler((req, reply) => {
     if (/^\/(api|ws|assets|widgets|user-)/.test(req.url)) return reply.code(404).send({ error: "Not found" });
