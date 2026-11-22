@@ -2,7 +2,7 @@ import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import "./styles.css";
 import { api, connect } from "./lib/ws";
-import { loadSettings, me, type Me } from "./store";
+import { loadSettings, loadUpdate, me, type Me } from "./store";
 import { Shell } from "./shell/Shell";
 import { Login } from "./dialogs/Login";
 import { Wall, Pair } from "./wall/Wall";
@@ -15,7 +15,7 @@ function Root() {
     .then((r) => { me.value = r.user; setAuthed(r.authed); })
     .catch(() => setAuthed(false));
   useEffect(() => { check(); }, []);
-  useEffect(() => { if (authed) { connect(); loadSettings(); } }, [authed]);
+  useEffect(() => { if (authed) { connect(); loadSettings(); if (me.value?.role === "admin") loadUpdate(); } }, [authed]);
   const [useLogin, setUseLogin] = useState(false);
   if (authed === null) return <div style={{ position: "fixed", inset: 0, background: "#000" }} />;
   // A paired tablet only has the wall.

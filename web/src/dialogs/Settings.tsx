@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { settings, saveSettings, me, isAdmin, type Settings, type Me } from "../store";
+import { settings, saveSettings, me, isAdmin, update, updateLost, loadUpdate, applyUpdate, type Settings, type Me } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { WeatherPlace } from "../wall/Wall";
@@ -167,6 +167,7 @@ function AdminSettings() {
 
   return (
     <>
+      <Updates />
       <Users />
       <Tablets />
 
@@ -384,6 +385,84 @@ function Speaker() {
           <button class="btn" onClick={test}><Icon name="solar:play-linear" size={14} />Test on the wall</button>
           <span class="dim" style={{ fontSize: 12.5 }}>{msg}</span>
         </div>
+      </div>
+    </>
+  );
+}
+
+// ---------------- updates (admin) ----------------
+function Notes({ text }: { text: string }) {
+  const out: any[] = []; let list: string[] = [];
+  const flush = () => { if (list.length) out.push(<ul>{list.map((l) => <li>{l}</li>)}</ul>); list = []; };
+  for (const raw of text.split(/\r?\n/)) {
+    const l = raw.trim();
+    if (/^[-*] /.test(l)) { list.push(l.slice(2)); continue; }
+    flush();
+    if (/^#+ /.test(l)) out.push(<h4>{l.replace(/^#+ /, "")}</h4>);
+    else if (l) out.push(<p style={{ margin: "4px 0" }}>{l}</p>);
+  }
+  flush();
+  return <div class="upd-notes">{out}</div>;
+}
+
+const STEPS = ["Starting", "Downloading", "Building", "Restarting"];
+function Updates() {
+  const u = update.value;
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => { if (!u) loadUpdate(); }, []);
+  if (!u) return null;
+  const j = u.job;
+  const running = updateLost.value || j.state === "running" || j.state === "restarting";
+  const step = updateLost.value ? "Restarting" : j.step;
+  const pct = Math.round(((STEPS.indexOf(step) + 1) / (STEPS.length + 1)) * 100);
+  const recheck = async () => { setBusy(true); setErr(""); await loadUpdate(true); setBusy(false); };
+  const go = async () => {
+    if (!confirm(`Update HarbourOS to ${u.latest!.version}? It restarts and is unavailable for a minute or two.`)) return;
+    setErr(""); try { await applyUpdate(); } catch (e) { setErr((e as Error).message); }
+  };
+  const when = u.checkedAt ? new Date(u.checkedAt).toLocaleString() : "never";
+
+  return (
+    <>
+      <div class="sec-title">Updates {u.available && !running && <span class="dot update" style={{ marginLeft: 0 }} />}</div>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <div>
+            <div>Version <b>{u.current}</b>{u.available && u.latest && <> · <b style={{ color: "var(--acc)" }}>{u.latest.version} available</b></>}
+              {!u.available && !u.error && u.latest && <span class="muted"> · up to date</span>}</div>
+            <div class="muted" style={{ fontSize: 12 }}>Last checked {when}</div>
+          </div>
+          <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+            {!running && <button class="btn" disabled={busy} onClick={recheck}><Icon name="solar:refresh-linear" size={15} />{busy ? "Checking…" : "Check now"}</button>}
+            {u.available && !running && j.state !== "failed" &&
+              <button class="btn primary" disabled={!u.canApply} title={u.applyHint} onClick={go}><Icon name="solar:download-minimalistic-linear" size={15} />Update</button>}
+          </span>
+        </div>
+        {u.error && <span class="err-text">Could not check for updates: {u.error}</span>}
+        {u.available && !u.canApply && u.applyHint && <span class="muted">{u.applyHint}</span>}
+        {u.available && u.latest && !running && (
+          <div>
+            <div class="muted" style={{ fontSize: 12 }}>Released {u.latest.publishedAt ? new Date(u.latest.publishedAt).toLocaleDateString() : ""}
+              {u.latest.url && <> · <a href={u.latest.url} target="_blank" rel="noopener">Release page</a></>}</div>
+            {u.latest.notes ? <Notes text={u.latest.notes} /> : <div class="muted">No release notes.</div>}
+          </div>
+        )}
+        {running && (
+          <div style={{ display: "grid", gap: 8 }}>
+            <div>{step === "Restarting" ? "Restarting HarbourOS… this page reloads when it's back." : `${step || "Starting"}…`} <span class="muted">({j.target})</span></div>
+            <div class="upd-bar"><i style={{ width: `${pct}%` }} /></div>
+            {j.log.length > 0 && <pre class="upd-log">{j.log.slice(-12).join("\n")}</pre>}
+          </div>
+        )}
+        {j.state === "failed" && (
+          <div style={{ display: "grid", gap: 8 }}>
+            <span class="err-text">Update failed: {j.error}</span>
+            {j.log.length > 0 && <pre class="upd-log">{j.log.slice(-12).join("\n")}</pre>}
+            <div><button class="btn" onClick={() => api("/api/update/dismiss", { method: "POST" }).then(() => loadUpdate())}>OK</button></div>
+          </div>
+        )}
+        {err && <span class="err-text">{err}</span>}
       </div>
     </>
   );

@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { apps, view, navigate, settings, saveSettings, sidebarOpen, dialog, me, isAdmin, type App } from "../store";
+import { apps, view, navigate, settings, saveSettings, sidebarOpen, dialog, me, isAdmin, update, type App } from "../store";
 import { Icon } from "../icons/Icon";
 import { api } from "../lib/ws";
 import { menuHandlers } from "./ContextMenu";
@@ -116,7 +116,8 @@ export function Sidebar() {
               <a class="it" href="/wall" title="Wall mode: full-screen tablet view">
                 <Icon name="solar:tablet-linear" /><span class="lbl">Wall mode</span>
               </a>
-              <Item id="settings" icon="solar:settings-linear" label="Settings" />
+              <Item id="settings" icon="solar:settings-linear" label="Settings"
+                status={update.value?.available ? "update" : undefined} />
             </>
           )}
         </div>

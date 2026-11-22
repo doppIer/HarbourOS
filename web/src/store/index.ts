@@ -80,3 +80,27 @@ export async function saveSettings(patch: Partial<Settings>) {
   settings.value = await api<Settings>("/api/settings", { method: "PUT", json: patch }); applyAccent();
 }
 function applyAccent() { if (settings.value) document.documentElement.style.setProperty("--acc", settings.value.accent); }
+
+// ---------- self-update (admins) ----------
+export interface UpdateStatus {
+  current: string; latest: { version: string; notes: string; url: string; publishedAt: string } | null;
+  available: boolean; checkedAt: number; error?: string; canApply: boolean; applyHint?: string;
+  job: { state: "idle" | "running" | "restarting" | "failed"; step: string; log: string[]; error?: string; target?: string };
+}
+export const update = signal<UpdateStatus | null>(null);
+/** The server went away mid-update (it is being replaced): keep the card in "restarting". */
+export const updateLost = signal(false);
+let updTimer: ReturnType<typeof setTimeout> | undefined;
+export async function loadUpdate(force = false) {
+  clearTimeout(updTimer);
+  try {
+    const before = update.value;
+    const u = await api<UpdateStatus>(`/api/update${force ? "?force=1" : ""}`);
+    const wasBusy = updateLost.value || before?.job.state === "running" || before?.job.state === "restarting";
+    update.value = u; updateLost.value = false;
+    if (wasBusy && u.job.state === "idle" && before && u.current !== before.current) { location.reload(); return; } // new version is up
+  } catch { if (update.value && update.value.job.state !== "idle") updateLost.value = true; }
+  const busy = updateLost.value || update.value?.job.state === "running" || update.value?.job.state === "restarting";
+  updTimer = setTimeout(() => loadUpdate(), busy ? 1500 : 3600_000);
+}
+export async function applyUpdate() { await api("/api/update/apply", { method: "POST" }); await loadUpdate(); }

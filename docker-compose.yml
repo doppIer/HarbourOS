@@ -20,7 +20,10 @@ services:
     mem_limit: 32m
 
   harbor:
-    build: .
+    build:
+      context: .
+      args:
+        HARBOR_VERSION: ${HARBOR_VERSION:-dev}   # set by the updater to the release being installed
     image: harboros:latest
     restart: unless-stopped
     depends_on: [docker-proxy]
@@ -33,6 +36,7 @@ services:
       DISK_PATHS: /host/root=/   # e.g. "/host/root=/,/host/data=/mnt/data"
       HOST_ROOT: /host/root      # store: checks which devices and folders the host has
       TERMINAL_MODE: ssh
+      HARBOR_HOST_DIR: ${PWD}    # this folder on the host: Settings → Updates rebuilds from it
       TERMINAL_SSH_TARGET: ${TERMINAL_SSH_USER:-harbor}@host.docker.internal
     extra_hosts:
       - host.docker.internal:host-gateway

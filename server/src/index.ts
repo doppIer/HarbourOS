@@ -37,6 +37,7 @@ ensureSshKey();
 syncFrameProxies();
 await registerAuth(app);
 await registerRoutes(app);
+(await import("./update.js")).startUpdateChecks();
 await registerWall(app);
 await registerTransit(app);
 await registerMusic(app);

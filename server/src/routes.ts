@@ -1,6 +1,7 @@
 import { agentStatus, script } from "./terminal/agents.js";
 import { hostExec } from "./host.js";
 import { demo } from "./demo.js";
+import * as updater from "./update.js";
 import { discover, probe, type Found } from "./apps/discover.js";
 import fs from "node:fs";
 import path from "node:path";
@@ -147,6 +148,11 @@ export async function registerRoutes(app: FastifyInstance) {
     await refresh(); dropEmptyApps(touched); publishApps();
     return { results };
   });
+
+  // ---------- updates (admin only: not in memberAllowed) ----------
+  app.get("/api/update", async (req) => { if ((req.query as any)?.force === "1") await updater.check(true); return updater.status(); });
+  app.post("/api/update/apply", async () => updater.apply());
+  app.post("/api/update/dismiss", async () => { updater.dismissFailure(); return updater.status(); });
 
   // ---------- settings ----------
   // Members and wall tablets get only what the interface uses; addresses, accounts and paths stay with admins.
