@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { stats, containers, dialog, isAdmin } from "../store";
+import { stats, containers, dialog, isAdmin, CONTAINER_DRAG } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { Tile, loadLayout, saveLayout, type LayoutItem, type Size } from "../widgets/runtime";
@@ -138,6 +138,21 @@ function AttentionRow({ c }: { c: ContainerInfo }) {
   );
 }
 
+/** Published ports as links to this server (the address HarbourOS is open on). */
+function Ports({ c }: { c: ContainerInfo }) {
+  const ports = c.ports ?? [];
+  if (!ports.length) return <span class="dim">–</span>;
+  return <>{ports.map((p) => {
+    const ip = p.ip && !["0.0.0.0", "::", ""].includes(p.ip) ? p.ip : location.hostname;
+    const local = /^127\.|^::1$/.test(ip) && !/^(127\.|localhost$)/.test(location.hostname);
+    const host = ip.includes(":") ? `[${ip}]` : ip;
+    const label = `${p.public}${p.public !== p.private ? `→${p.private}` : ""}${p.type === "udp" ? "/udp" : ""}`;
+    if (local || p.type !== "tcp") return <span key={label} class="port-chip" style={{ color: "var(--t3)" }} title={local ? "Only reachable on the server itself" : "UDP"}>{label}</span>;
+    const url = `${[443, 8443, 9443].includes(p.private) ? "https" : "http"}://${host}:${p.public}`;
+    return <a key={label} class="port-chip" href={url} target="_blank" rel="noopener" draggable={false} title={url}>{label} ↗</a>;
+  })}</>;
+}
+
 /** Removing deletes the container; its named volumes (data) and image stay. */
 function confirmRemove(names: string[]) {
   return confirm(`Remove ${names.length > 1 ? `${names.length} containers` : names[0]}?\n\n${names.length > 1 ? names.join("\n") + "\n\n" : ""}` +
@@ -195,18 +210,21 @@ function ContainerTable({ list }: { list: ContainerInfo[] }) {
           <thead><tr>
             {isAdmin.value && <th style={{ width: 28 }}><input type="checkbox" aria-label="Select all" checked={allOn} onChange={() => setSel(allOn ? new Set() : new Set(selectable.map((c) => c.name)))} /></th>}
             <th style={{ cursor: "pointer" }} onClick={() => setSort("name")}>Name</th>
-            <th class="hide-sm">Stack</th><th>State</th>
+            <th class="hide-sm">Stack</th><th>State</th><th>Ports</th>
             <th style={{ cursor: "pointer" }} onClick={() => setSort("cpu")}>CPU</th>
             <th style={{ cursor: "pointer" }} onClick={() => setSort("mem")}>RAM</th>
             <th class="hide-sm">Uptime</th><th class="hide-sm">Restarts</th><th />
           </tr></thead>
           <tbody class="mono">
             {rows.map((c) => (
-              <tr key={c.id} class={sel.has(c.name) ? "on" : ""}>
+              <tr key={c.id} class={sel.has(c.name) ? "on" : ""} draggable={isAdmin.value}
+                title={isAdmin.value ? "Drag onto the sidebar to add it as an app" : undefined}
+                onDragStart={(e) => { e.dataTransfer!.setData(CONTAINER_DRAG, c.name); e.dataTransfer!.setData("text/plain", c.name); e.dataTransfer!.effectAllowed = "copy"; }}>
                 {isAdmin.value && <td>{self(c) ? <span title="HarbourOS itself" class="dim">–</span> : <input type="checkbox" aria-label={`Select ${c.name}`} checked={sel.has(c.name)} onChange={() => toggle(c.name)} />}</td>}
                 <td>{c.name}</td>
                 <td class="hide-sm muted">{c.stack ?? "–"}</td>
                 <td style={{ color: color(c) }}>● {c.state}{c.health ? ` (${c.health})` : ""}</td>
+                <td><Ports c={c} /></td>
                 <td>{c.cpu != null ? `${c.cpu.toFixed(1)}%` : "–"}</td>
                 <td>{c.mem ? fmt.bytes(c.mem).toString() : "–"}</td>
                 <td class="hide-sm muted">{c.state === "running" && c.startedAt ? fmt.ago(Date.parse(c.startedAt)) : "–"}</td>

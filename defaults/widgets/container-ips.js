@@ -29,6 +29,10 @@ export default {
       list.innerHTML = "";
       for (const c of rows) {
         const row = ui.h("div", { style: { display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" } });
+        // drag onto the sidebar to add it as an app
+        row.draggable = true;
+        row.title = "Drag onto the sidebar to add it as an app";
+        row.addEventListener("dragstart", (e) => { e.dataTransfer.setData("application/x-harbor-container", c.name); e.dataTransfer.setData("text/plain", c.name); e.dataTransfer.effectAllowed = "copy"; });
         row.append(ui.h("span", { style: { fontWeight: "600", fontSize: "13px", flex: "1 1 120px", minWidth: "0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, title: c.stack ? `${c.name} · ${c.stack}` : c.name }, c.name));
         for (const n of c.ips ?? []) {
           const a = chip(n.ip, { title: `${n.network} · click to copy`, class: "mono" });
