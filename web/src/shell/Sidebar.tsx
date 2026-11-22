@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { apps, view, navigate, settings, saveSettings, sidebarOpen, dialog, me, isAdmin, update, type App } from "../store";
+import { apps, view, navigate, settings, saveSettings, sidebarOpen, dialog, me, isAdmin, update, uiPrefs, setUiPrefs, appFromContainer, CONTAINER_DRAG, type App } from "../store";
 import { markGuide } from "../home/Guide";
 import { Icon } from "../icons/Icon";
 import { api } from "../lib/ws";
@@ -39,6 +39,30 @@ export function Sidebar() {
   const collapsed = settings.value?.sidebarCollapsed ?? false;
   const [closed, setClosed] = useState<string[]>(readClosed);
   const [drag, setDrag] = useState<{ id: string; over?: string } | null>(null);
+  const [dropApp, setDropApp] = useState(false);   // a container from the dashboard is over the sidebar
+  const [resizing, setResizing] = useState(false);
+  const [dropErr, setDropErr] = useState("");
+
+  const isContainer = (e: DragEvent) => !!e.dataTransfer?.types.includes(CONTAINER_DRAG);
+  const navDrag = isAdmin.value ? {
+    onDragOver: (e: DragEvent) => { if (!isContainer(e)) return; e.preventDefault(); e.dataTransfer!.dropEffect = "copy"; if (!dropApp) setDropApp(true); },
+    onDragLeave: (e: DragEvent) => { if (!(e.currentTarget as Node).contains(e.relatedTarget as Node)) setDropApp(false); },
+    onDrop: (e: DragEvent) => {
+      if (!isContainer(e)) return;
+      e.preventDefault(); setDropApp(false); setDropErr("");
+      appFromContainer(e.dataTransfer!.getData(CONTAINER_DRAG)).catch((x) => setDropErr((x as Error).message));
+    },
+  } : {};
+
+  // Drag the right edge to resize; the width is kept per device (also in Settings).
+  const startResize = (e: PointerEvent) => {
+    e.preventDefault();
+    const x0 = e.clientX, w0 = uiPrefs.value.sidebarWidth, z = uiPrefs.value.scale;
+    setResizing(true);
+    const move = (m: PointerEvent) => setUiPrefs({ sidebarWidth: w0 + (m.clientX - x0) / z });
+    const up = () => { setResizing(false); removeEventListener("pointermove", move); removeEventListener("pointerup", up); };
+    addEventListener("pointermove", move); addEventListener("pointerup", up);
+  };
 
   const toggleSection = (s: string) => {
     const n = closed.includes(s) ? closed.filter((x) => x !== s) : [...closed, s];
@@ -61,7 +85,9 @@ export function Sidebar() {
   return (
     <>
       {sidebarOpen.value && <div class="sb-scrim" onClick={() => (sidebarOpen.value = false)} />}
-      <nav class={`sb ${collapsed ? "collapsed" : ""} ${sidebarOpen.value ? "mobile-open" : ""}`} aria-label="Main">
+      <nav class={`sb ${collapsed ? "collapsed" : ""} ${sidebarOpen.value ? "mobile-open" : ""} ${dropApp ? "drop-app" : ""} ${resizing ? "resizing" : ""}`} aria-label="Main" {...navDrag}>
+        <div class="sb-resize" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" title="Drag to resize · double-click to reset"
+          onPointerDown={startResize as any} onDblClick={() => setUiPrefs({ sidebarWidth: 232 })} />
         <div class="sb-brand">
           <button class="iconbtn" style={{ marginLeft: -6 }} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => saveSettings({ sidebarCollapsed: !collapsed })}>
@@ -93,6 +119,8 @@ export function Sidebar() {
                   </button>
                 )}
               </div>
+              {i === 0 && dropApp && <div class="sb-drop-hint">Drop to add as an app</div>}
+              {i === 0 && dropErr && <div class="sb-drop-hint" style={{ color: "var(--err)" }}>{dropErr}</div>}
               {!closed.includes(s) && pinned.filter((a) => (a.section || "Apps") === s).map((a) => (
                 <div key={a.id} draggable
                   class={drag?.over === a.id ? "it-wrap drop-before" : "it-wrap"}

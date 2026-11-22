@@ -79,6 +79,51 @@ export async function loadSettings() { settings.value = await api<Settings>("/ap
 export async function saveSettings(patch: Partial<Settings>) {
   settings.value = await api<Settings>("/api/settings", { method: "PUT", json: patch }); applyAccent();
 }
+/** Per-device look: UI scale and sidebar width (a tablet and a desktop want different ones). */
+export interface UiPrefs { scale: number; sidebarWidth: number }
+const uiKey = "harbor.ui";
+const readUi = (): UiPrefs => { try { return { scale: 1, sidebarWidth: 232, ...JSON.parse(localStorage.getItem(uiKey) ?? "{}") }; } catch { return { scale: 1, sidebarWidth: 232 }; } };
+export const uiPrefs = signal<UiPrefs>(readUi());
+export const SIDEBAR_MIN = 180, SIDEBAR_MAX = 420;
+export function setUiPrefs(p: Partial<UiPrefs>) {
+  const n = { ...uiPrefs.value, ...p };
+  n.scale = Math.min(1.5, Math.max(0.7, n.scale));
+  n.sidebarWidth = Math.round(Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, n.sidebarWidth)));
+  uiPrefs.value = n;
+  try { localStorage.setItem(uiKey, JSON.stringify(n)); } catch {}
+  applyUi();
+}
+export function applyUi() {
+  const r = document.documentElement.style;
+  r.setProperty("zoom", uiPrefs.value.scale === 1 ? "" : String(uiPrefs.value.scale));
+  r.setProperty("--sb-w", `${uiPrefs.value.sidebarWidth}px`);
+}
+applyUi();
+
+/** Drag data type for a container dragged from the dashboard onto the sidebar. */
+export const CONTAINER_DRAG = "application/x-harbor-container";
+
+/** Make a sidebar app out of a container (its first published web port) and open it. */
+export async function appFromContainer(name: string) {
+  const c = containers.value.find((x) => x.name === name);
+  if (!c) return;
+  const existing = apps.value.find((a) => a.containers.includes(name));
+  if (existing) { if (!existing.pinned) await api(`/api/apps/${existing.id}`, { method: "PUT", json: { pinned: true } }); return navigate(existing.id); }
+  const port = (c.ports ?? []).find((p) => p.type === "tcp");
+  const host = location.hostname.includes(":") ? `[${location.hostname}]` : location.hostname;
+  let url = port ? `${[443, 8443, 9443].includes(port.private) ? "https" : "http"}://${host}:${port.public}` : "";
+  if (!url) {
+    url = prompt(`${name} doesn't publish a port. Which address opens it?`, `http://${host}:`) ?? "";
+    if (!/^https?:\/\/.+/.test(url)) return;
+  }
+  const label = name.replace(/[-_](app|server|web|ui)$/i, "").replace(/[-_]+/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
+  const a = await api<App>("/api/apps/new", { method: "PUT", json: {
+    name: label, url, containers: [name], section: "Apps", pinned: true, startOnDemand: true, idleStopMinutes: 0,
+  } });
+  apps.value = [...apps.value.filter((x) => x.id !== a.id), { ...a, status: c.state === "running" ? "running" : "stopped" }];
+  navigate(a.id);
+}
+
 function applyAccent() { if (settings.value) document.documentElement.style.setProperty("--acc", settings.value.accent); }
 
 // ---------- self-update (admins) ----------
