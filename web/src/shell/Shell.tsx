@@ -6,6 +6,7 @@ import { Background } from "./Background";
 import { Icon } from "../icons/Icon";
 import { Home } from "../home/Home";
 import { ContextMenuHost } from "./ContextMenu";
+import { UpdateToast } from "./UpdateToast";
 
 const Terminal = lazy(() => import("../apps/terminal/Terminal"));
 const AI = lazy(() => import("../apps/ai/AI"));
@@ -27,6 +28,7 @@ export function Shell() {
       <Background />
       <div class="shell">
         <Sidebar />
+        <UpdateToast />
         <main class="main">
           <div class="topbar">
             <button class="iconbtn only-mobile" aria-label="Open menu" onClick={() => (sidebarOpen.value = true)}>

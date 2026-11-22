@@ -11,7 +11,7 @@ import { env } from "./env.js";
 import { demo } from "./demo.js";
 import { hostExec, q } from "./host.js";
 
-export const currentVersion = (process.env.HARBOR_VERSION || "").trim() || (demo ? "0.9.0" : "dev");
+export const currentVersion = (process.env.HARBOR_VERSION || "").trim() || (demo ? "0.9.0" : "local");
 const repo = process.env.UPDATE_REPO || "doppIer/HarbourOS";
 const hostDir = (process.env.HARBOR_HOST_DIR || "").trim();
 const EVERY = 6 * 3600_000;
@@ -31,7 +31,8 @@ let checking: Promise<void> | null = null;
 
 const parts = (v: string) => v.replace(/^v/i, "").split(/[.+-]/).map((n) => parseInt(n, 10) || 0);
 export function newer(a: string, b: string) { // is a newer than b?
-  if (b === "dev") return false; // a local build never nags
+  if (b === "local") return false; // running from source (npm run dev): never nag
+  if (b === "dev") return true;     // Docker image built without HARBOR_VERSION: any release is newer
   const x = parts(a), y = parts(b);
   for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
   return false;

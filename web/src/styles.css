@@ -655,3 +655,6 @@ a.it, a.btn { text-decoration: none; }
 .guide-step.done { color: var(--t3); }
 .guide-step.done svg, .guide-step.done .iconify { color: var(--ok); }
 .guide-dot { width: 14px; height: 14px; margin: 2px; border-radius: 50%; border: 1.5px solid var(--t3); flex-shrink: 0; }
+.toast { position: fixed; top: 14px; right: 14px; z-index: 60; display: flex; align-items: center; gap: 12px; max-width: min(380px, calc(100vw - 28px));
+  padding: 12px 14px; background: var(--raise); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.35); animation: toast-in .25s ease-out; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
