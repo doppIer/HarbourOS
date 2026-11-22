@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { settings, saveSettings, me, isAdmin, type Settings, type Me } from "../store";
+import { settings, saveSettings, me, isAdmin, uiPrefs, setUiPrefs, SIDEBAR_MIN, SIDEBAR_MAX, type Settings, type Me } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { WeatherPlace } from "../wall/Wall";
@@ -14,8 +14,31 @@ export default function SettingsView() {
       <h1>Settings</h1>
       <div class="lede">{isAdmin.value ? "Stored on the server, shared by every device." : "Your account on this server."}</div>
       <Account />
+      <DisplaySettings />
       {isAdmin.value && <AdminSettings />}
     </div>
+  );
+}
+
+// ---------------- display (this device only) ----------------
+function DisplaySettings() {
+  const p = uiPrefs.value;
+  return (
+    <>
+      <div class="sec-title">Display <span class="dim" style={{ fontSize: 12, fontWeight: 400 }}>this device only</span></div>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 16 }}>
+        <label class="field">Interface scale {Math.round(p.scale * 100)}%
+          <input type="range" min={0.7} max={1.5} step={0.05} value={p.scale} onChange={(e) => setUiPrefs({ scale: Number(e.currentTarget.value) })} />
+        </label>
+        <label class="field">Sidebar width {p.sidebarWidth}px
+          <input type="range" min={SIDEBAR_MIN} max={SIDEBAR_MAX} step={4} value={p.sidebarWidth} onInput={(e) => setUiPrefs({ sidebarWidth: Number(e.currentTarget.value) })} />
+        </label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button class="btn" onClick={() => setUiPrefs({ scale: 1, sidebarWidth: 232 })}>Reset</button>
+          <span class="dim" style={{ fontSize: 12.5 }}>You can also drag the sidebar's right edge.</span>
+        </div>
+      </div>
+    </>
   );
 }
 
