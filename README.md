@@ -23,31 +23,60 @@
 
 ## Quick start
 
-You need a Linux server with Docker and Docker Compose. [Tailscale](https://tailscale.com) is recommended, so only your own devices can reach it.
+You need a Linux server with Docker. [Tailscale](https://tailscale.com) is recommended, so only your own devices can reach it.
+
+**1. Download HarbourOS**
 
 ```bash
-git clone https://github.com/doppIer/HarbourOS.git
-cd HarbourOS
-cp .env.example .env      # put your server's Tailscale IP in TAILSCALE_IP
-docker compose up -d --build
+git clone https://github.com/doppIer/HarbourOS.git && cd HarbourOS
 ```
 
-Open `http://<TAILSCALE_IP>:7080` and create the first account: that's the admin.
+**2. Tell it your Tailscale IP**
 
-Optional, each one command on the server (in the HarbourOS folder):
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set `TAILSCALE_IP` (run `tailscale ip -4` to see it).
+
+**3. Start it**
+
+```bash
+HARBOR_VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//') docker compose up -d --build
+```
+
+**4. Open it**
+
+Go to `http://<TAILSCALE_IP>:7080` and create the first account. That account is the admin.
+
+**5. Turn on the terminal (recommended)**
+
+```bash
+sudo bash host/setup-terminal.sh
+```
+
+This gives you the browser terminal and Files, and lets HarbourOS update itself.
+
+**Updating:** open **Settings → Updates** and press **Update**. A dot on Settings tells you when a new version is out.
+
+<details>
+<summary>Optional extras</summary>
 
 | What | Command |
 |---|---|
-| Browser terminal and Files over SSH | `sudo bash host/setup-terminal.sh` |
 | HTTPS on your tailnet (needed for some browser features) | `sudo bash host/setup-https.sh` |
 | Now Playing for AirPlay / Spotify Connect on the server's speaker | `sudo bash host/setup-nowplaying.sh` |
 | Real CPU power readings | `sudo bash host/rapl-permissions.sh` |
 
-Update later with:
+</details>
 
-```bash
-git pull && docker compose up -d --build
-```
+## Make it yours: drag and drop
+
+Arrange things by dragging. No config files.
+
+- **Sidebar:** drag an app to move it.
+- **Dashboard:** press **Customize**, then drag tiles to reorder them. Each tile also has buttons to change its size or remove it.
+- **Wall:** on the tablet, long-press any tile to edit, then use the tile's buttons to move, resize or remove it.
 
 > [!IMPORTANT]
 > Don't expose port 7080 to the internet. Compose binds it to your Tailscale IP only.

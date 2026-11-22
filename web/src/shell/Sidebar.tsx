@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import { apps, view, navigate, settings, saveSettings, sidebarOpen, dialog, me, isAdmin, update, type App } from "../store";
+import { markGuide } from "../home/Guide";
 import { Icon } from "../icons/Icon";
 import { api } from "../lib/ws";
 import { menuHandlers } from "./ContextMenu";
@@ -53,6 +54,7 @@ export function Sidebar() {
     ids.splice(ids.indexOf(targetId), 0, drag.id);
     apps.value = ids.map((i) => apps.value.find((a) => a.id === i)!); // optimistic
     api("/api/apps/order", { method: "POST", json: { ids } });
+    markGuide("sidebar");
     setDrag(null);
   };
 

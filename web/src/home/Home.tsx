@@ -5,6 +5,7 @@ import { Icon } from "../icons/Icon";
 import { Tile, loadLayout, saveLayout, type LayoutItem, type Size } from "../widgets/runtime";
 import { fmt } from "../widgets/ui";
 import type { ContainerInfo } from "../../../server/src/protocol";
+import { Guide, markGuide } from "./Guide";
 import { np, watchNowPlaying, control } from "../lib/nowplaying";
 
 const SIZES: Size[] = ["s", "m", "tall", "l", "w"];
@@ -25,7 +26,7 @@ export function Home() {
   useEffect(() => { loadLayout().then(setLayout); watchNowPlaying(); }, []);
   useEffect(() => { if (editing) api<string[]>("/api/widgets").then(setAvailable); }, [editing]);
 
-  const update = (l: LayoutItem[]) => { setLayout(l); saveLayout(l); };
+  const update = (l: LayoutItem[]) => { setLayout(l); saveLayout(l); markGuide("customize"); };
   const s = stats.value;
   const list = containers.value;
   const att = attention(list);
@@ -49,6 +50,7 @@ export function Home() {
           </button>
         )}
       </div>
+      {isAdmin.value && !editing && <Guide onCustomize={() => setEditing(true)} />}
 
       {editing && (
         <div class="rows" style={{ marginBottom: 12, padding: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

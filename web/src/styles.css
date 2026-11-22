@@ -648,3 +648,10 @@ a.it, a.btn { text-decoration: none; }
 @media (max-width: 700px), (orientation: portrait) { .stage-ctrl { margin-inline: auto; } }
 .stage-ctrl > button { transition: transform .2s cubic-bezier(.2,1.4,.3,1), background .2s, color .2s, opacity .25s ease; }
 .stage-ctrl:has(.vol.open) > button, .stage-ctrl:has(.vol.open) > .stage-eq { opacity: 0; pointer-events: none; }
+
+.guide { margin: 18px 0 6px; }
+.guide-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+.guide-step { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); }
+.guide-step.done { color: var(--t3); }
+.guide-step.done svg, .guide-step.done .iconify { color: var(--ok); }
+.guide-dot { width: 14px; height: 14px; margin: 2px; border-radius: 50%; border: 1.5px solid var(--t3); flex-shrink: 0; }
