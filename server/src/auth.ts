@@ -239,6 +239,17 @@ export async function registerAuth(app: FastifyInstance) {
 
   // ---- user admin (admin only, enforced by the hook) ----
   app.get("/api/users", async () => users.all());
+  // Admin adds someone directly: active right away, with a random password nobody
+  // knows, plus a one-time code they use to set their own ("Forgot password?").
+  app.post("/api/users", async (req, reply) => {
+    const { email, name, role } = (req.body ?? {}) as { email?: string; name?: string; role?: string };
+    if (!validEmail(email)) return reply.code(400).send({ error: "Enter a valid email address." });
+    if (role !== "admin" && role !== "member") return reply.code(400).send({ error: "Unknown role." });
+    if (users.byEmail(email)) return reply.code(409).send({ error: "That email already has an account." });
+    const displayName = (typeof name === "string" && name.trim()) ? name.trim().slice(0, 60) : email.split("@")[0];
+    const u = users.create(email, displayName, crypto.randomBytes(24).toString("base64url"), role, "active");
+    return { user: u, ...resets.create(u.id) };
+  });
   app.patch("/api/users/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
     const { role, status } = req.body as { role?: "admin" | "member"; status?: "active" | "pending" };

@@ -116,11 +116,42 @@ function Users() {
           </div>
         ))}
       </div>
+      <AddUser onAdded={(u, code) => { setCodes((c) => ({ ...c, [u.id]: code })); load(); }} />
       <div class="dim" style={{ fontSize: 12.5, marginTop: 8 }}>
         Members can see the dashboard and open apps. Admins can also use the terminal, Claude, container controls and settings.
       </div>
       {err && <div class="err-text" style={{ marginTop: 6 }}>{err}</div>}
     </>
+  );
+}
+
+function AddUser({ onAdded }: { onAdded: (u: Me, code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ name: "", email: "", role: "member" });
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const set = (p: Partial<typeof f>) => { setF((o) => ({ ...o, ...p })); setErr(""); };
+  const add = async () => {
+    if (!f.email.trim()) return setErr("Enter an email address.");
+    setBusy(true);
+    try { const r = await api<{ user: Me; code: string }>("/api/users", { method: "POST", json: f }); onAdded(r.user, r.code); setF({ name: "", email: "", role: "member" }); setOpen(false); }
+    catch (e) { setErr((e as Error).message); }
+    setBusy(false);
+  };
+  if (!open) return <button class="btn" style={{ marginTop: 10 }} onClick={() => setOpen(true)}><Icon name="solar:add-circle-linear" size={15} />Add member</button>;
+  return (
+    <div class="rows" style={{ marginTop: 10, padding: 16, display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr 130px" }}>
+      <label class="field">Name<input class="input" value={f.name} onInput={(e) => set({ name: e.currentTarget.value })} /></label>
+      <label class="field">Email<input class="input" type="email" value={f.email} onInput={(e) => set({ email: e.currentTarget.value })} /></label>
+      <label class="field">Role<select class="input" value={f.role} onChange={(e) => set({ role: e.currentTarget.value })}>
+        <option value="member">Member</option><option value="admin">Admin</option></select></label>
+      <div style={{ gridColumn: "1 / -1", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <button class="btn primary" disabled={busy} onClick={add}>Add</button>
+        <button class="btn" onClick={() => setOpen(false)}>Cancel</button>
+        <span class="dim" style={{ fontSize: 12.5 }}>You'll get a one-time code. They use it with "Forgot password?" to set their own password.</span>
+        {err && <span class="err-text">{err}</span>}
+      </div>
+    </div>
   );
 }
 
