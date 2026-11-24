@@ -2,7 +2,7 @@ import { agentStatus, script } from "./terminal/agents.js";
 import { hostExec } from "./host.js";
 import { demo } from "./demo.js";
 import * as updater from "./update.js";
-import { discover, probe, type Found } from "./apps/discover.js";
+import { discover, fixTsNet, probe, type Found } from "./apps/discover.js";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -68,7 +68,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/apps/discover", async (req) => {
     const host = String((req.query as any).host ?? "").replace(/[^a-zA-Z0-9.:\[\]-]/g, "") || "localhost";
     if (demo) return demoFound(host);
-    return discover(host, apps.all());
+    return discover(fixTsNet(`http://${host}`).replace(/^http:\/\//, "").replace(/\/$/, ""), apps.all());
   });
   app.get("/api/apps/:id/probe", async (req) => {
     const a = apps.get((req.params as any).id);
@@ -86,6 +86,7 @@ export async function registerRoutes(app: FastifyInstance) {
       id, name: "App", icon: "solar:widget-linear", url: "", containers: [], startOnDemand: true, idleStopMinutes: 0,
       alwaysOn: false, startOnBoot: false, pinned: true, order: apps.all().length, section: "Apps", ...prev, ...body,
     };
+    a.url = fixTsNet(String(a.url ?? ""));
     if (!a.name.trim() || !/^https?:\/\//.test(a.url)) throw Object.assign(new Error("Name and an http(s) URL are required."), { statusCode: 400 });
     if (a.healthUrl && !/^https?:\/\//.test(String(a.healthUrl))) throw Object.assign(new Error("The health check address has to start with http:// or https://."), { statusCode: 400 });
     apps.put(a); publishApps();

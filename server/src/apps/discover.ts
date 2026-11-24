@@ -154,11 +154,31 @@ export async function appLogo(url: string): Promise<string | null> {
   return null;
 }
 
+/**
+ * http://<machine>.ts.net:<port> never works: browsers force every *.ts.net name to
+ * https (HSTS preload), and the container can't resolve MagicDNS names. Use the
+ * Tailscale IP instead. https on 443 (Tailscale Serve) is left alone.
+ */
+export function fixTsNet(url: string): string {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.endsWith(".ts.net") || !env.tailscaleIp) return url;
+    if (u.protocol === "https:" && (u.port === "" || u.port === "443")) return url;
+    u.hostname = env.tailscaleIp;
+    return u.href.replace(/\/$/, url.endsWith("/") ? "/" : "");
+  } catch { return url; }
+}
+
 /** Can the browser show `url` inside an iframe on HarbourOS's origin? */
 export async function probe(url: string, origin: string): Promise<{ reachable: boolean; embeddable: boolean; reason?: string }> {
   let r: Response;
+  // From inside the container the host's own addresses may not route; host.docker.internal always does.
+  const viaHost = (() => { try { const u = new URL(url); if (u.hostname === env.tailscaleIp || u.hostname.endsWith(".ts.net")) { u.hostname = "host.docker.internal"; return u.href; } } catch {} return null; })();
   try { r = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(5000) }); }
-  catch { return { reachable: false, embeddable: true, reason: "HarbourOS couldn't reach this address. Is the container running and the port right?" }; }
+  catch {
+    try { if (!viaHost) throw 0; r = await fetch(viaHost, { redirect: "follow", signal: AbortSignal.timeout(5000) }); }
+    catch { return { reachable: false, embeddable: true, reason: "HarbourOS couldn't reach this address. Is the container running and the port right?" }; }
+  }
   r.body?.cancel().catch(() => {});
   const xfo = (r.headers.get("x-frame-options") ?? "").toLowerCase();
   const fa = /frame-ancestors([^;]*)/i.exec(r.headers.get("content-security-policy") ?? "")?.[1]?.trim().split(/\s+/) ?? null;
@@ -189,6 +209,11 @@ export async function autoAddApps(store: { all(): AppConfig[]; put(a: AppConfig)
     }
     db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('auto_discovered',?)").run(String(Date.now()));
     if (found.length) { console.log(`Added ${found.length} app(s) found on this server to the sidebar.`); onChange(); }
+  }
+  // Apps saved with an http://<machine>.ts.net:<port> address (it can't work, see fixTsNet).
+  for (const a of store.all()) {
+    const url = fixTsNet(a.url);
+    if (url !== a.url) { store.put({ ...a, url }); console.log(`${a.name}: ${a.url} → ${url}`); onChange(); }
   }
   // Apps added before logos worked (or by hand) with the generic icon.
   let changed = false;
