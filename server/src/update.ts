@@ -101,6 +101,12 @@ async function runDemo(target: string) {
 async function runHost(target: string) {
   const log = `/tmp/harbour-update-${Date.now()}.log`;
   const tag = `v${target}`;
+  // The SSH user usually isn't the one who cloned HarbourOS: say how to fix it instead of a bare "Permission denied".
+  const pre = await hostExec(`test -w ${q(hostDir)}/.git -a -x ${q(hostDir)} && echo ok || id -un`);
+  if (pre.out.toString().trim() !== "ok") {
+    const who = pre.out.toString().trim() || "the SSH user";
+    throw new Error(`${who} can't write to ${hostDir} on the host. Run this there once, then try again: cd ${hostDir} && sudo bash host/setup-terminal.sh`);
+  }
   const script = [
     "set -e", `cd ${q(hostDir)}`,
     `echo "::step Downloading"`, "git fetch --tags --force origin", `git -c advice.detachedHead=false checkout --force ${q(tag)}`,
