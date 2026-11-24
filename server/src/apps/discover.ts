@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { env } from "../env.js";
 
-export interface Found { key: string; name: string; icon: string; url: string; ports: number[]; containers: string[]; composeProject?: string; running: boolean }
+export interface Found { key: string; name: string; icon: string; url: string; ports: number[]; containers: string[]; composeProject?: string; running: boolean; image?: string }
 
 const WEB = [80, 443, 8080, 8443, 3000, 8000, 8096, 9000, 5000, 8081, 8123, 4533, 2283, 3001, 8888, 9443];
 const repo = (img: string) => img.replace(/@.*$/, "").replace(/:[^/]*$/, "").replace(/^(docker\.io\/)?(library\/)?/, "").toLowerCase();
@@ -43,14 +43,65 @@ export async function discover(host: string, existing: AppConfig[]): Promise<Fou
       containers: cs.map(cname),
       composeProject: proj,
       running: cs.some((c) => c.State === "running"),
+      image: cs[0].Image,
     });
   }
-  // Apps the catalog doesn't know: use the app's own icon from its web page.
-  await Promise.all(out.filter((f) => f.running && f.icon.startsWith("solar:")).map(async (f) => {
-    const logo = await appLogo(f.url).catch(() => null);
+  // Apps the catalog doesn't know: the app's own icon, or a known one by name.
+  await Promise.all(out.filter((f) => f.icon.startsWith("solar:")).map(async (f) => {
+    const logo = await findLogo(f.url, [f.image ?? "", f.composeProject ?? "", f.name], f.running);
     if (logo) f.icon = logo;
   }));
   return out.sort((a, b) => Number(b.running) - Number(a.running) || a.name.localeCompare(b.name));
+}
+
+/**
+ * A logo for an app: first the one its own web page advertises (fetched through
+ * the host, since the address the browser uses may not route from inside the
+ * container), then the selfh.st icon set by image or project name.
+ */
+export async function findLogo(url: string, names: string[], running = true): Promise<string | null> {
+  if (running) {
+    try {
+      const u = new URL(url); u.hostname = "host.docker.internal";
+      const viaHost = await appLogo(u.href).catch(() => null);
+      if (viaHost) return viaHost;
+    } catch {}
+    const direct = await appLogo(url).catch(() => null);
+    if (direct) return direct;
+  }
+  return knownLogo(names);
+}
+
+/** Candidate slugs from an image ("ghcr.io/homarr-labs/homarr:v1" → homarr) or a name ("Domain Digger" → domain-digger). */
+function slugs(names: string[]): string[] {
+  const out = new Set<string>();
+  for (const n of names) {
+    if (!n) continue;
+    const last = n.replace(/@.*$/, "").replace(/:[^/]*$/, "").split("/").pop()!.toLowerCase();
+    for (const v of [last, last.replace(/[^a-z0-9]+/g, "-"), last.replace(/[^a-z0-9]+/g, ""), last.replace(/-(server|app|web|docker)$/, "")]) if (v) out.add(v.replace(/^-+|-+$/g, ""));
+  }
+  return [...out].filter((x) => /^[a-z0-9][a-z0-9-]{0,60}$/.test(x)).slice(0, 8);
+}
+
+const misses = new Set<string>();
+/** The selfh.st icon set (CC BY 4.0, thousands of self-hosted apps), saved locally so the browser never fetches it. */
+export async function knownLogo(names: string[]): Promise<string | null> {
+  const dir = path.join(env.dataDir, "icons");
+  for (const slug of slugs(names)) {
+    const file = `selfhst-${slug}.png`;
+    if (fs.existsSync(path.join(dir, file))) return `/user-icons/${file}`;
+    if (misses.has(slug)) continue;
+    try {
+      const r = await fetch(`https://cdn.jsdelivr.net/gh/selfhst/icons/png/${slug}.png`, { signal: AbortSignal.timeout(5000) });
+      if (!r.ok || !(r.headers.get("content-type") ?? "").includes("png")) { misses.add(slug); continue; }
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length < 100 || buf.length > 1024 * 1024) { misses.add(slug); continue; }
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, file), buf);
+      return `/user-icons/${file}`;
+    } catch { /* offline: try the next name */ }
+  }
+  return null;
 }
 
 /** Download the best icon a web app advertises (apple-touch-icon, icon link, /favicon.ico). */
@@ -115,4 +166,35 @@ export async function probe(url: string, origin: string): Promise<{ reachable: b
   const blocked = (fa ? !(fa.includes("*") || fa.includes(origin) || (fa.includes("'self'") && sameOrigin)) : false)
     || (!fa && (xfo.includes("deny") || (xfo.includes("sameorigin") && !sameOrigin)));
   return { reachable: true, embeddable: !blocked, reason: blocked ? "This app doesn't allow other pages to show it." : undefined };
+}
+
+/**
+ * First start: put every running web app on this server in the sidebar, so the
+ * admin doesn't have to go looking. Runs once; later the "Find on server" button
+ * does it on demand. Also gives logos to apps that still have the generic icon.
+ */
+export async function autoAddApps(store: { all(): AppConfig[]; put(a: AppConfig): void }, onChange: () => void) {
+  const { db } = await import("../db.js");
+  const done = db.prepare("SELECT value FROM settings WHERE key='auto_discovered'").get();
+  const host = env.tailscaleIp || "localhost";
+  if (!done) {
+    const found = (await discover(host, store.all())).filter((f) => f.running);
+    let order = store.all().length;
+    for (const f of found) {
+      store.put({
+        id: crypto.randomUUID().slice(0, 8), name: f.name, icon: f.icon, url: f.url, section: "Apps",
+        containers: f.composeProject ? [] : f.containers, composeProject: f.composeProject,
+        startOnDemand: true, idleStopMinutes: 0, alwaysOn: false, startOnBoot: false, pinned: true, order: order++,
+      } as AppConfig);
+    }
+    db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('auto_discovered',?)").run(String(Date.now()));
+    if (found.length) { console.log(`Added ${found.length} app(s) found on this server to the sidebar.`); onChange(); }
+  }
+  // Apps added before logos worked (or by hand) with the generic icon.
+  let changed = false;
+  for (const a of store.all().filter((a) => a.icon === "solar:widget-linear")) {
+    const logo = await findLogo(a.url, [a.composeProject ?? "", ...(a.containers ?? []), a.name]).catch(() => null);
+    if (logo) { store.put({ ...a, icon: logo }); changed = true; }
+  }
+  if (changed) onChange();
 }

@@ -141,9 +141,9 @@ export function area(parent: HTMLElement, o: { max?: number; points?: number; tr
     // Bad samples (NaN, null) would break the whole curve, so carry the last good value.
     const ds = series.map((s) => { let last = 0; return downsample(s.data, n).map((v) => (Number.isFinite(v) ? (last = v) : last)); });
     const max = o.max ?? Math.max(1, ...ds.flat()) * 1.25;
-    // Right after a restart there are only a few samples: keep the time scale and
-    // grow the curve in from the right instead of stretching it across the tile.
-    const x0 = n < slots ? (1 - (n - 1) / (slots - 1)) * w : 0;
+    // Right after a restart there are only a few samples: spread them across the
+    // whole tile, so a fresh install doesn't look like a chart squeezed into a corner.
+    const x0 = 0;
     const X = (i: number) => x0 + (i / (n - 1)) * (w - x0);
     const top = 50;
     // Draw the largest series first so smaller ones stay visible on top.

@@ -6,6 +6,7 @@ import { stats, containers, apps, history, navigate } from "../store";
 import { api, live } from "../lib/ws";
 import * as music from "../lib/nowplaying";
 import { ui } from "./ui";
+import { Icon } from "../icons/Icon";
 
 export type Size = "s" | "m" | "l" | "w" | "tall" | "hero";
 export interface LayoutItem { widget: string; size: Size; opts?: Record<string, string> }
@@ -51,7 +52,7 @@ async function load(name: string): Promise<WidgetDef> {
   return m.default as WidgetDef;
 }
 
-export function Tile({ item, editing, mode = "desk", open = navigate }: { item: LayoutItem; editing: boolean; mode?: "wall" | "desk"; open?: (view: string) => void }) {
+export function Tile({ item, editing, mode = "desk", open = navigate, onEdit }: { item: LayoutItem; editing: boolean; mode?: "wall" | "desk"; open?: (view: string) => void; onEdit?: () => void }) {
   const host = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
@@ -89,7 +90,11 @@ export function Tile({ item, editing, mode = "desk", open = navigate }: { item: 
 
   return (
     <div class={`tile ${item.size} ${editing ? "edit" : ""}`}>
-      <span class="src">widgets/{item.widget}.js</span>
+      {onEdit && (
+        <button class="tile-pen" aria-label={`Edit tiles (this one is widgets/${item.widget}.js)`} title={`Customize · widgets/${item.widget}.js`} onClick={onEdit}>
+          <Icon name="solar:pen-2-linear" size={13} />
+        </button>
+      )}
       {err && <div class="err-tile">{err}</div>}
       <div ref={host} style={{ height: "100%", display: err ? "none" : "flex", flexDirection: "column", minHeight: 0 }} />
     </div>

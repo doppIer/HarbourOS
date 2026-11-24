@@ -67,7 +67,10 @@ let prevNet: { rx: number; tx: number; t: number } | null = null;
 const SKIP = /^(lo|veth|docker|br-|virbr|tailscale)/;
 export function net() {
   let rx = 0, tx = 0, ts = false;
-  for (const l of read(P("net/dev")).split("\n").slice(2)) {
+  // /proc/net is a link to the *reading* process's network, i.e. the container's own.
+  // PID 1 in the host's /proc lives in the host network: that's where tailscale0 and the real NICs are.
+  const dev = read(P("1/net/dev")) || read(P("net/dev"));
+  for (const l of dev.split("\n").slice(2)) {
     const [name, rest] = l.split(":");
     if (!rest) continue;
     const n = name.trim();

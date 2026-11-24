@@ -55,6 +55,19 @@ if grep -q '^TAILSCALE_IP=' .env; then sed -i.bak "s/^TAILSCALE_IP=.*/TAILSCALE_
 else echo "TAILSCALE_IP=${IP}" >> .env; fi
 echo "TAILSCALE_IP=${IP}: HarbourOS only listens on your tailnet address."
 
+# ---- Tailscale details (devices, health) in the Tailscale widget ----
+# tailscaled answers a process that isn't its operator read-only; HarbourOS only reads status.
+if [ -S /var/run/tailscale/tailscaled.sock ] && [ ! -f docker-compose.override.yml ]; then
+  cat > docker-compose.override.yml <<'YML'
+# Written by install.sh: lets the Tailscale widget list your devices. Delete this file to turn it off.
+services:
+  harbor:
+    volumes:
+      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock
+YML
+  echo "Tailscale widget: showing your devices (docker-compose.override.yml)."
+fi
+
 # ---- which version ----
 step "Picking the version"
 git fetch --tags --quiet origin 2>/dev/null || echo "${d}(couldn't reach GitHub; using what's here)${n}"

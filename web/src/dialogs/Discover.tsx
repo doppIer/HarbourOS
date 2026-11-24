@@ -50,7 +50,12 @@ export default function Discover() {
         </header>
         <div class="body">
           <div class="muted" style={{ fontSize: 13 }}>Containers with a published port that aren't in the sidebar yet. Check the name and address before adding.</div>
-          {!list && !err && <div class="dim">Scanning containers and their ports, fetching logos…</div>}
+          {!list && !err && (
+            <div class="discover-loading" role="status">
+              <span class="spin" />
+              <span>Looking through your containers and fetching their logos. This can take a few seconds…</span>
+            </div>
+          )}
           {list?.length === 0 && <div class="dim">Nothing new found. Every app with a published port is already in the sidebar.</div>}
           {list && list.length > 0 && (
             <div class="rows">

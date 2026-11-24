@@ -12,6 +12,12 @@ import { np, watchNowPlaying, control } from "../lib/nowplaying";
 const isSelf = (c: ContainerInfo) => /^harbou?ros$/.test(c.stack ?? "");
 
 const SIZES: Size[] = ["s", "m", "tall", "l", "w"];
+/** Columns × rows dragged to → the nearest tile size (s 1×1, m 2×1, tall 1×2, l 3×2, w 4×2). */
+function snap(c: number, h: number, cols: number): Size {
+  if (h <= 1) return c <= 1 ? "s" : "m";
+  if (c <= 1) return "tall";
+  return c >= cols ? "w" : "l";
+}
 const greet = () => { const h = new Date().getHours(); return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
 const IDLE_DAY = 86400e3;
 
@@ -23,6 +29,30 @@ function attention(list: ContainerInfo[]) {
 export function Home() {
   const [layout, setLayout] = useState<LayoutItem[]>([]);
   const [editing, setEditing] = useState(false);
+  // While dragging a tile's corner: which tile, and the size it would snap to.
+  const [preview, setPreview] = useState<{ i: number; size: Size } | null>(null);
+  const startResize = (e: PointerEvent, i: number) => {
+    e.preventDefault(); e.stopPropagation();
+    const tile = (e.currentTarget as HTMLElement).closest(".tile") as HTMLElement;
+    const grid = tile.parentElement!.closest(".grid") as HTMLElement;
+    const cs = getComputedStyle(grid);
+    const gap = parseFloat(cs.columnGap) || 0, cols = cs.gridTemplateColumns.split(" ").length;
+    const colW = (grid.clientWidth - gap * (cols - 1)) / cols, rowH = parseFloat(cs.gridAutoRows) || 132;
+    const r = tile.getBoundingClientRect();
+    let size = layout[i].size;
+    const move = (ev: PointerEvent) => {
+      const c = Math.max(1, Math.min(cols, Math.round((r.width + ev.clientX - e.clientX + gap) / (colW + gap))));
+      const h = Math.max(1, Math.round((r.height + ev.clientY - e.clientY + gap) / (rowH + gap)));
+      size = snap(c, h, cols);
+      setPreview({ i, size });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
+      setPreview(null);
+      if (size !== layout[i].size) { const l = [...layout]; l[i] = { ...l[i], size }; update(l); }
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  };
   const [available, setAvailable] = useState<string[]>([]);
   const [dragI, setDragI] = useState<number | null>(null);
 
@@ -73,7 +103,7 @@ export function Home() {
         {layout.map((item, i) => item.widget === "nowplaying" ? null : ( // music lives in the pill up top
           <div key={item.widget + i} style={{ display: "contents" }}>
             {editing ? (
-              <div class={`tile ${item.size} edit`} draggable
+              <div class={`tile ${preview?.i === i ? preview.size : item.size} edit`} draggable={preview == null}
                 onDragStart={() => setDragI(i)} onDragOver={(e) => e.preventDefault()}
                 onDrop={() => { if (dragI == null) return; const l = [...layout]; const [m] = l.splice(dragI, 1); l.splice(i, 0, m); update(l); setDragI(null); }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -83,8 +113,14 @@ export function Home() {
                     <button class="iconbtn" aria-label="Remove tile" onClick={() => update(layout.filter((_, j) => j !== i))}><Icon name="solar:trash-bin-minimalistic-linear" size={15} /></button>
                   </span>
                 </div>
+                <span class="resize-grip" title="Drag to resize" aria-hidden="true"
+                  onPointerDown={(e) => startResize(e, i)} onDragStart={(e) => e.preventDefault()} />
               </div>
-            ) : <Tile item={item} editing={false} />}
+            ) : (
+              <div style={{ display: "contents" }}>
+                <Tile item={item} editing={false} onEdit={() => setEditing(true)} />
+              </div>
+            )}
           </div>
         ))}
       </div>
