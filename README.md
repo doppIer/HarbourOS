@@ -23,7 +23,7 @@
 
 ## Quick start
 
-You need a Linux server with Docker. [Tailscale](https://tailscale.com) is recommended, so only your own devices can reach it.
+You need a Linux server with Docker and [Tailscale](https://tailscale.com) (signed in with `sudo tailscale up`), so only your own devices can reach it.
 
 **1. Download HarbourOS**
 
@@ -31,31 +31,36 @@ You need a Linux server with Docker. [Tailscale](https://tailscale.com) is recom
 git clone https://github.com/doppIer/HarbourOS.git && cd HarbourOS
 ```
 
-**2. Tell it your Tailscale IP**
+**2. Install it**
 
 ```bash
-cp .env.example .env
+./install.sh
 ```
 
-Open `.env` and set `TAILSCALE_IP` (run `tailscale ip -4` to see it).
+It finds your Tailscale address, builds and starts the latest release, sets up the browser terminal and one-click updates, and asks whether to turn on https (needed for passkeys). At the end it prints the address to open.
 
-**3. Start it**
+**3. Open it**
+
+Open the address it printed and create the first account. That account is the admin.
+
+<details>
+<summary>Install by hand instead</summary>
+
+```bash
+cp .env.example .env    # then set TAILSCALE_IP to the output of: tailscale ip -4
+```
 
 ```bash
 HARBOR_VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//') docker compose up -d --build
 ```
 
-**4. Open it**
-
-Go to `http://<TAILSCALE_IP>:7080` and create the first account. That account is the admin.
-
-**5. Turn on the terminal (recommended)**
-
 ```bash
 sudo bash host/setup-terminal.sh
 ```
 
-This gives you the browser terminal and Files, and lets HarbourOS update itself.
+`TAILSCALE_IP` is there so HarbourOS listens on your tailnet address only, never on your LAN or the internet.
+
+</details>
 
 **Updating:** open **Settings → Updates** and press **Update**. A dot on Settings tells you when a new version is out.
 
