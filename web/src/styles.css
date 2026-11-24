@@ -290,6 +290,10 @@ table.ct tr.on td { background: var(--active); }
 .passkey-btn { margin-top: 14px; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,.1);
   background: rgba(30, 32, 40, .55); color: #d9dbe2; font: inherit; font-size: 14px; cursor: pointer; transition: background .15s, border-color .15s; }
 .passkey-btn:hover { background: rgba(44, 46, 56, .75); border-color: rgba(255,255,255,.16); color: #f2f2f5; }
+.passkey-btn.primary { background: var(--acc); border-color: transparent; color: #fff; }
+.passkey-btn.primary:hover { filter: brightness(1.08); background: var(--acc); }
+.pill-eye { flex: none; width: 32px; height: 32px; margin-right: 6px; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: #8a8f98; cursor: pointer; }
+.pill-eye:hover { color: #f2f2f5; background: rgba(255,255,255,.06); }
 .passkey-btn:disabled { opacity: .6; cursor: default; }
 .reset-cmd { width: min(520px, 100%); margin: 0 0 22px; padding: 14px 14px 12px 18px; display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; align-items: center;
   border-radius: 16px; border: 1px solid rgba(255,255,255,.1); background: rgba(10, 11, 14, .75); }

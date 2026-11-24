@@ -6,11 +6,11 @@ import { api } from "../lib/ws";
 import { BackgroundLayer } from "../shell/Background";
 import { Icon } from "../icons/Icon";
 import mark from "../assets/mark.png";
-import { passkeysAvailable, signInWithPasskey } from "../lib/passkey";
+import { addPasskey, passkeysAvailable, signInWithPasskey } from "../lib/passkey";
 
 type Mode = "login" | "signup" | "setup" | "forgot" | "reset";
 interface Config { needsSetup: boolean; allowSignup: boolean; background: { module: string; dim: number; blur: number }; accent: string }
-interface Step { key: "name" | "email" | "password" | "code"; type: string; placeholder: string; autoComplete: string }
+interface Step { key: "name" | "email" | "password" | "confirm" | "code"; type: string; placeholder: string; autoComplete: string }
 
 const STEPS: Record<Mode, Step[]> = {
   forgot: [
@@ -19,6 +19,7 @@ const STEPS: Record<Mode, Step[]> = {
   reset: [
     { key: "code", type: "text", placeholder: "Reset code, e.g. K7QM-3XRP", autoComplete: "one-time-code" },
     { key: "password", type: "password", placeholder: "New password (8+ characters)", autoComplete: "new-password" },
+    { key: "confirm", type: "password", placeholder: "Type the new password again", autoComplete: "new-password" },
   ],
   login: [
     { key: "email", type: "email", placeholder: "Email address", autoComplete: "username" },
@@ -28,11 +29,13 @@ const STEPS: Record<Mode, Step[]> = {
     { key: "name", type: "text", placeholder: "Your name", autoComplete: "name" },
     { key: "email", type: "email", placeholder: "Email address", autoComplete: "username" },
     { key: "password", type: "password", placeholder: "Choose a password (8+ characters)", autoComplete: "new-password" },
+    { key: "confirm", type: "password", placeholder: "Type the password again", autoComplete: "new-password" },
   ],
   setup: [
     { key: "name", type: "text", placeholder: "Your name", autoComplete: "name" },
     { key: "email", type: "email", placeholder: "Email address", autoComplete: "username" },
     { key: "password", type: "password", placeholder: "Choose a password (8+ characters)", autoComplete: "new-password" },
+    { key: "confirm", type: "password", placeholder: "Type the password again", autoComplete: "new-password" },
   ],
 };
 
@@ -48,7 +51,9 @@ export function Login({ onDone }: { onDone: () => void }) {
   const [cfg, setCfg] = useState<Config | null>(null);
   const [mode, setMode] = useState<Mode>("login");
   const [step, setStep] = useState(0);
-  const [vals, setVals] = useState({ name: "", email: "", password: "", code: "" });
+  const [vals, setVals] = useState({ name: "", email: "", password: "", confirm: "", code: "" });
+  const [show, setShow] = useState(false);
+  const [offer, setOffer] = useState(false); // after the first sign-up: add a passkey?
   const [focused, setFocused] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -68,7 +73,7 @@ export function Login({ onDone }: { onDone: () => void }) {
   const cur = steps[step];
   const value = vals[cur.key];
 
-  const switchMode = (m: Mode) => { setMode(m); setStep(0); setErr(""); setPending(false); setVals((v) => ({ ...v, password: "", code: "" })); };
+  const switchMode = (m: Mode) => { setMode(m); setStep(0); setErr(""); setPending(false); setVals((v) => ({ ...v, password: "", confirm: "", code: "" })); setShow(false); };
 
   const canPasskey = passkeysAvailable();
   const passkey = async () => {
@@ -87,6 +92,7 @@ export function Login({ onDone }: { onDone: () => void }) {
     if (cur.key === "password" && !value) return setErr("Enter your password.");
     if (cur.key === "code" && value.replace(/[^a-z0-9]/gi, "").length !== 8) return setErr("The code has 8 letters and digits.");
     if (cur.key === "password" && mode !== "login" && value.length < 8) return setErr("Use at least 8 characters.");
+    if (cur.key === "confirm" && value !== vals.password) { setVals((v) => ({ ...v, confirm: "" })); return setErr("The passwords don't match. Type it again, or go back to change it."); }
     setErr("");
     if (step < steps.length - 1) { setStep(step + 1); return; }
 
@@ -106,16 +112,18 @@ export function Login({ onDone }: { onDone: () => void }) {
         onDone();
       } else {
         const r = await api<{ user?: unknown; pending?: boolean }>("/api/signup", { method: "POST", json: vals });
-        if (r.pending) { setPending(true); setVals({ name: "", email: "", password: "", code: "" }); }
+        if (r.pending) { setPending(true); setVals({ name: "", email: "", password: "", confirm: "", code: "" }); }
+        else if (passkeysAvailable()) setOffer(true);
         else onDone();
       }
     } catch (x) {
       setErr((x as Error).message);
-      if (cur.key === "password" && mode !== "reset") setVals((v) => ({ ...v, password: "" }));
+      if (cur.key === "password" && mode === "login") setVals((v) => ({ ...v, password: "" }));
     } finally { setBusy(false); }
   };
 
   if (!cfg) return <div class="auth" />;
+  if (offer) return <PasskeyOffer background={cfg.background} onDone={onDone} />;
   const copy = COPY[mode];
 
   return (
@@ -143,7 +151,7 @@ export function Login({ onDone }: { onDone: () => void }) {
               key={mode + cur.key}
               ref={input}
               class="pill-input"
-              type={cur.type}
+              type={cur.type === "password" && show ? "text" : cur.type}
               name={cur.key}
               placeholder={cur.placeholder}
               autoComplete={cur.autoComplete}
@@ -154,6 +162,12 @@ export function Login({ onDone }: { onDone: () => void }) {
               onBlur={() => setFocused(false)}
               onInput={(e) => { setVals({ ...vals, [cur.key]: e.currentTarget.value }); setErr(""); }}
             />
+            {cur.type === "password" && (
+              <button type="button" class="pill-eye" aria-label={show ? "Hide password" : "Show password"} aria-pressed={show}
+                onMouseDown={(e) => e.preventDefault()} onClick={() => setShow(!show)}>
+                <Icon name={show ? "solar:eye-closed-linear" : "solar:eye-linear"} size={18} />
+              </button>
+            )}
             <button class="pill-go" aria-label={step < steps.length - 1 ? "Continue" : mode === "login" ? "Sign in" : mode === "forgot" ? "Get a code" : mode === "reset" ? "Set new password" : "Create account"} disabled={busy}>
               {busy ? <span class="spin" /> : <Icon name="solar:arrow-right-linear" size={16} />}
             </button>
@@ -211,6 +225,37 @@ function ResetCommand() {
         <Icon name={copied ? "solar:check-circle-linear" : "solar:copy-linear"} size={16} />{copied ? "Copied" : "Copy"}
       </button>
       <div class="reset-hint">Look for <b>Code: XXXX-XXXX</b> in the output.</div>
+    </div>
+  );
+}
+
+/** Right after the first account is made: one tap to add a passkey, or skip. */
+function PasskeyOffer({ background, onDone }: { background: Config["background"]; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const add = async () => {
+    setBusy(true); setErr("");
+    try { if (await addPasskey()) onDone(); }
+    catch (x) { setErr((x as Error).message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div class="auth">
+      <BackgroundLayer module={background.module} dim={background.dim} blur={background.blur} />
+      <div class="auth-center">
+        <div class="auth-head">
+          <Icon name="solar:key-minimalistic-square-linear" size={40} />
+          <h1 style={{ marginTop: 14 }}>Add a passkey?</h1>
+          <p>Next time, sign in with Face ID, Touch ID or Windows Hello instead of typing your password. You can add more later in Settings → Passkeys.</p>
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+          <button type="button" class="passkey-btn primary" onClick={add} disabled={busy}>
+            {busy ? <span class="spin" /> : <Icon name="solar:key-minimalistic-square-linear" size={18} />}Add a passkey
+          </button>
+          <button type="button" class="passkey-btn" onClick={onDone} disabled={busy}>Not now</button>
+        </div>
+        <div class="auth-meta">{err ? <span class="err-text">{err}</span> : <span>&nbsp;</span>}</div>
+      </div>
     </div>
   );
 }
