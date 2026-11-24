@@ -71,6 +71,15 @@ else
 fi
 
 # ---- build and start ----
+# ---- port 7080 ----
+# HarbourOS uses 7080 (and 7081-7090 for apps that refuse frames). Only an old HarbourOS may hold them.
+mine="$($DOCKER ps -q --filter label=com.docker.compose.project=harbouros 2>/dev/null)$($DOCKER ps -q --filter label=com.docker.compose.project=harboros 2>/dev/null)"
+if [ -z "$mine" ] && command -v ss >/dev/null && ss -ltnH 2>/dev/null | awk '{print $4}' | grep -Eq ':(708[0-9]|7090)$'; then
+  die "Something else is already using port 7080-7090 on this server:
+$(ss -ltnp 2>/dev/null | grep -E ':(708[0-9]|7090) ' || true)
+HarbourOS needs these ports. Stop that service and run ./install.sh again."
+fi
+
 step "Building and starting (the first build takes a few minutes)"
 HARBOR_VERSION="$VERSION" $DOCKER compose build
 # Before 1.0.8 the compose project was "harboros"; its containers hold the ports the new ones need.
@@ -111,5 +120,14 @@ fi
 
 echo
 echo "${g}${b}HarbourOS is running.${n}"
-echo "Open ${b}${URL}${n} on any device in your tailnet and create the first account. It becomes the admin."
-echo "${d}Updates: Settings → Updates. Uninstall: see the README.${n}"
+# A clickable link in terminals that support it (most do), plain text elsewhere.
+link() { [ -t 1 ] && printf '\e]8;;%s\e\\%s\e]8;;\e\\' "$1" "$1" || printf '%s' "$1"; }
+echo "Open ${b}$(link "$URL")${n} on any device in your tailnet and create the first account. It becomes the admin."
+if command -v qrencode >/dev/null; then
+  echo "Or scan this with your phone:"; qrencode -t ANSIUTF8 -m 2 "$URL"
+fi
+# Sitting at the server itself (not over SSH)? Open it right here.
+if [ -z "${SSH_CONNECTION:-}" ] && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && command -v xdg-open >/dev/null; then
+  xdg-open "$URL" >/dev/null 2>&1 &
+fi
+echo "${d}Port: 7080 (http). Updates: Settings → Updates. Uninstall: see the README.${n}"

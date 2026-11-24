@@ -37,7 +37,9 @@ git clone https://github.com/doppIer/HarbourOS.git && cd HarbourOS
 ./install.sh
 ```
 
-It finds your Tailscale address, builds and starts the latest release, sets up the browser terminal and one-click updates, and asks whether to turn on https (needed for passkeys). At the end it prints the address to open.
+It finds your Tailscale address, builds and starts the latest release, sets up the browser terminal and one-click updates, and asks whether to turn on https (needed for passkeys). At the end it prints the address to open: `http://<tailscale-ip>:7080`, or `https://<machine>.ts.net` if you turned on https.
+
+HarbourOS uses port **7080**, plus **7081-7090** for apps that refuse to open inside a frame. They're bound to your Tailscale address only.
 
 **3. Open it**
 
