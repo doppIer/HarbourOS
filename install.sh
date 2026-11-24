@@ -99,7 +99,8 @@ HarbourOS didn't answer on $URL. See what happened: $DOCKER compose logs harbor"
 # ---- terminal, Files and one-click updates ----
 if [ "$TERMINAL" = 1 ]; then
   step "Setting up the browser terminal and one-click updates (needs sudo)"
-  sudo bash host/setup-terminal.sh
+  # HarbourOS already runs; a failure here only costs the terminal and one-click updates.
+  sudo bash host/setup-terminal.sh || echo "${r}The terminal setup didn't finish. HarbourOS works without it; try again later: sudo bash host/setup-terminal.sh${n}"
 fi
 
 # ---- https (needed for passkeys) ----

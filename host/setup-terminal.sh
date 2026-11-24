@@ -45,7 +45,9 @@ if ! sudo -u "$USER_NAME" test -w "$HARBOR_DIR" -a -x "$HARBOR_DIR" 2>/dev/null 
   d="$HARBOR_DIR"
   while d="$(dirname "$d")"; [ "$d" != "/" ]; do setfacl -m "u:$USER_NAME:--x" "$d"; done
   # data/ is the container's own; leave it alone.
-  find "$HARBOR_DIR" -path "$HARBOR_DIR/data" -prune -o -exec setfacl -m "u:$USER_NAME:rwX,d:u:$USER_NAME:rwX" {} +
+  # Folders also get a default entry so files created later inherit it; plain files can't have one.
+  find "$HARBOR_DIR" -path "$HARBOR_DIR/data" -prune -o -type d -exec setfacl -m "u:$USER_NAME:rwx,d:u:$USER_NAME:rwx" {} +
+  find "$HARBOR_DIR" -path "$HARBOR_DIR/data" -prune -o ! -type d ! -type l -exec setfacl -m "u:$USER_NAME:rwX" {} +
   echo "Gave $USER_NAME access to $HARBOR_DIR for one-click updates."
 fi
 # git refuses to work in a repository someone else owns unless it's listed as safe.
