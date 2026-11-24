@@ -3,7 +3,7 @@
 // arrives on the live channel ("store" topic).
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { api, live } from "../../lib/ws";
-import { navigate } from "../../store";
+import { navigate, appHost } from "../../store";
 import { Icon } from "../../icons/Icon";
 import type { StoreApp, StoreInstall, StoreJob } from "../../../../server/src/protocol";
 
@@ -178,7 +178,7 @@ function Detail({ a, installs, jobs, onClose }: { a: StoreApp; installs: StoreIn
   // Re-render the compose preview whenever the form changes (debounced).
   useEffect(() => {
     if (!f) return;
-    const t = setTimeout(() => api<Preview>(`/api/store/apps/${encodeURIComponent(a.id)}/preview`, { method: "POST", json: { ...f, host: location.hostname } }).then(setPv).catch(() => {}), 250);
+    const t = setTimeout(() => api<Preview>(`/api/store/apps/${encodeURIComponent(a.id)}/preview`, { method: "POST", json: { ...f, host: appHost() } }).then(setPv).catch(() => {}), 250);
     return () => clearTimeout(t);
   }, [f]);
   const job = project ? jobs[project] : undefined;
@@ -189,7 +189,7 @@ function Detail({ a, installs, jobs, onClose }: { a: StoreApp; installs: StoreIn
     if (!f) return;
     setErr("");
     try {
-      const r = await api<{ project: string }>(`/api/store/apps/${encodeURIComponent(a.id)}/install`, { method: "POST", json: { ...f, host: location.hostname } });
+      const r = await api<{ project: string }>(`/api/store/apps/${encodeURIComponent(a.id)}/install`, { method: "POST", json: { ...f, host: appHost() } });
       setProject(r.project);
     } catch (e) { setErr((e as Error).message); }
   };

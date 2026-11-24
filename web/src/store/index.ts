@@ -56,6 +56,19 @@ live.on((m) => {
 
 /** Apps that open in their own tab: the ones that refuse iframes, and plain-http apps
  *  while HarbourOS itself is on https (browsers block http pages inside https ones). */
+/**
+ * The host to put in links to other apps on this server. Usually the one HarbourOS is
+ * open on, except a *.ts.net name: browsers force every *.ts.net address to https
+ * (the whole domain is on the HSTS preload list), so http://<name>.ts.net:3001 never
+ * reaches an app that speaks plain http. The Tailscale IP has no such rule.
+ */
+export function appHost(): string {
+  const h = location.hostname;
+  const ip = h.endsWith(".ts.net") ? stats.value?.tailscale?.ip : undefined;
+  const host = ip || h;
+  return host.includes(":") ? `[${host}]` : host;
+}
+
 export const opensInTab = (a: App) =>
   a.openMode === "tab" || (location.protocol === "https:" && (/^http:/i.test(a.url) || !!(a.stripFrameHeaders && a.framePort)));
 
@@ -110,7 +123,7 @@ export async function appFromContainer(name: string) {
   const existing = apps.value.find((a) => a.containers.includes(name));
   if (existing) { if (!existing.pinned) await api(`/api/apps/${existing.id}`, { method: "PUT", json: { pinned: true } }); return navigate(existing.id); }
   const port = (c.ports ?? []).find((p) => p.type === "tcp");
-  const host = location.hostname.includes(":") ? `[${location.hostname}]` : location.hostname;
+  const host = appHost();
   let url = port ? `${[443, 8443, 9443].includes(port.private) ? "https" : "http"}://${host}:${port.public}` : "";
   if (!url) {
     url = prompt(`${name} doesn't publish a port. Which address opens it?`, `http://${host}:`) ?? "";

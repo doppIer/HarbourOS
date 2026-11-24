@@ -1,7 +1,7 @@
 // Keeps opened apps mounted (hidden) for instant switching; unmounts apps not
 // viewed for `unmountAfterMinutes`. Boots stopped containers on open.
 import { useEffect, useRef, useState } from "preact/hooks";
-import { apps, view, boots, settings, isAdmin, type App } from "../store";
+import { apps, view, boots, settings, isAdmin, appHost, type App } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 
@@ -127,5 +127,5 @@ function BootScreen({ app }: { app: App }) {
 export function appSrc(app: App) {
   if (!(app.stripFrameHeaders && app.framePort)) return app.url;
   const u = new URL(app.url);
-  return `http://${location.hostname}:${app.framePort}${u.pathname}${u.search}`;
+  return `http://${appHost()}:${app.framePort}${u.pathname}${u.search}`;
 }

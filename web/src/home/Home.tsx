@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { stats, containers, dialog, isAdmin, CONTAINER_DRAG } from "../store";
+import { stats, containers, dialog, isAdmin, CONTAINER_DRAG, appHost } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { Tile, loadLayout, saveLayout, type LayoutItem, type Size } from "../widgets/runtime";
@@ -181,17 +181,24 @@ function AttentionRow({ c }: { c: ContainerInfo }) {
 
 /** Published ports as links to this server (the address HarbourOS is open on). */
 function Ports({ c }: { c: ContainerInfo }) {
+  const [all, setAll] = useState(false);
   const ports = c.ports ?? [];
+  const SHOW = 4; // a few chips, then "+N", so the row buttons stay on screen
   if (!ports.length) return <span class="dim">–</span>;
-  return <>{ports.map((p) => {
-    const ip = p.ip && !["0.0.0.0", "::", ""].includes(p.ip) ? p.ip : location.hostname;
-    const local = /^127\.|^::1$/.test(ip) && !/^(127\.|localhost$)/.test(location.hostname);
-    const host = ip.includes(":") ? `[${ip}]` : ip;
+  const shown = all ? ports : ports.slice(0, SHOW);
+  return <>{shown.map((p) => {
+    const bound = p.ip && !["0.0.0.0", "::", ""].includes(p.ip) ? p.ip : "";
+    const local = /^127\.|^::1$/.test(bound) && !/^(127\.|localhost$)/.test(location.hostname);
+    const host = bound ? (bound.includes(":") ? `[${bound}]` : bound) : appHost();
     const label = `${p.public}${p.public !== p.private ? `→${p.private}` : ""}${p.type === "udp" ? "/udp" : ""}`;
     if (local || p.type !== "tcp") return <span key={label} class="port-chip" style={{ color: "var(--t3)" }} title={local ? "Only reachable on the server itself" : "UDP"}>{label}</span>;
     const url = `${[443, 8443, 9443].includes(p.private) ? "https" : "http"}://${host}:${p.public}`;
     return <a key={label} class="port-chip" href={url} target="_blank" rel="noopener" draggable={false} title={url}>{label} ↗</a>;
-  })}</>;
+  })}{ports.length > SHOW && (
+    <button class="port-chip port-more" onClick={() => setAll(!all)} title={all ? "Show fewer" : ports.slice(SHOW).map((p) => p.public).join(", ")}>
+      {all ? "less" : `+${ports.length - SHOW}`}
+    </button>
+  )}</>;
 }
 
 /** Removing deletes the container; its named volumes (data) and image stay. */
@@ -265,7 +272,7 @@ function ContainerTable({ list }: { list: ContainerInfo[] }) {
                 <td>{c.name}</td>
                 <td class="hide-sm muted">{c.stack ?? "–"}</td>
                 <td style={{ color: color(c) }}>● {c.state}{c.health ? ` (${c.health})` : ""}</td>
-                <td><Ports c={c} /></td>
+                <td class="ports"><Ports c={c} /></td>
                 <td>{c.cpu != null ? `${c.cpu.toFixed(1)}%` : "–"}</td>
                 <td>{c.mem ? fmt.bytes(c.mem).toString() : "–"}</td>
                 <td class="hide-sm muted">{c.state === "running" && c.startedAt ? fmt.ago(Date.parse(c.startedAt)) : "–"}</td>

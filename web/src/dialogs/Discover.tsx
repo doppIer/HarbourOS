@@ -1,7 +1,7 @@
 // "Find on server": web apps already running on the host that the sidebar
 // doesn't have yet. Tick the ones you want and add them in one go.
 import { useEffect, useState } from "preact/hooks";
-import { dialog } from "../store";
+import { dialog, appHost } from "../store";
 import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 
@@ -15,7 +15,7 @@ export default function Discover() {
   const close = () => (dialog.value = null);
 
   useEffect(() => {
-    api<Found[]>(`/api/apps/discover?host=${encodeURIComponent(location.hostname)}`)
+    api<Found[]>(`/api/apps/discover?host=${encodeURIComponent(appHost())}`)
       .then((l) => { setList(l); setPick(Object.fromEntries(l.filter((f) => f.running).map((f) => [f.key, f]))); })
       .catch((e) => setErr((e as Error).message));
   }, []);
