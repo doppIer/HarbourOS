@@ -72,7 +72,11 @@ fi
 
 # ---- build and start ----
 step "Building and starting (the first build takes a few minutes)"
-HARBOR_VERSION="$VERSION" $DOCKER compose up -d --build
+HARBOR_VERSION="$VERSION" $DOCKER compose build
+# Before 1.0.8 the compose project was "harboros"; its containers hold the ports the new ones need.
+old="$($DOCKER ps -aq --filter label=com.docker.compose.project=harboros)"
+[ -z "$old" ] || { echo "Removing containers from the old \"harboros\" project..."; $DOCKER rm -f $old >/dev/null; }
+HARBOR_VERSION="$VERSION" $DOCKER compose up -d
 
 URL="http://${IP}:7080"
 printf "Waiting for HarbourOS to answer"

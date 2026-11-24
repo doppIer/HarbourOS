@@ -15,7 +15,7 @@ export function ensureSshKey() {
   if (env.terminalMode !== "ssh" || fs.existsSync(env.sshKey)) return;
   try {
     fs.mkdirSync(path.dirname(env.sshKey), { recursive: true, mode: 0o700 });
-    execFileSync("ssh-keygen", ["-t", "ed25519", "-N", "", "-C", "harboros", "-f", env.sshKey], { stdio: "ignore" });
+    execFileSync("ssh-keygen", ["-t", "ed25519", "-N", "", "-C", "harbouros", "-f", env.sshKey], { stdio: "ignore" });
     console.log(`Created ${env.sshKey}. Authorise it on the host: sudo bash host/setup-terminal.sh`);
   } catch (e) { console.warn("Could not create an SSH key:", (e as Error).message); }
 }

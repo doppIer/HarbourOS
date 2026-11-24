@@ -22,7 +22,7 @@ export function appContainers(app: AppConfig): RawContainer[] {
 }
 
 export function isHarbourContainer(c: { Labels?: Record<string, string>; Image?: string }) {
-  return c.Labels?.["com.docker.compose.project"] === "harboros" || /docker-socket-proxy|^harboros/.test(c.Image ?? "");
+  return /^harbou?ros$/.test(c.Labels?.["com.docker.compose.project"] ?? "") || /docker-socket-proxy|^harbou?ros/.test(c.Image ?? "");
 }
 
 /** Topological order using compose's depends_on label: dependencies first. */

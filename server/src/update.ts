@@ -86,9 +86,9 @@ async function runDemo(target: string) {
   const steps: [string, string, number][] = [
     ["Downloading", `Fetching tag v${target} from ${repo}`, 1200],
     ["Downloading", "Checked out v" + target, 800],
-    ["Building", "Building image harboros:latest", 1500],
+    ["Building", "Building image harbouros:latest", 1500],
     ["Building", "Step 3/3: npm run build — done", 1500],
-    ["Restarting", "Recreating container harboros-harbor-1", 1000],
+    ["Restarting", "Recreating container harbouros-harbor-1", 1000],
   ];
   for (const [step, line, ms] of steps) { say(line, step); await new Promise((r) => setTimeout(r, ms)); }
   job.state = "restarting"; say("Waiting for HarbourOS to come back…", "Restarting");
@@ -111,7 +111,10 @@ async function runHost(target: string) {
     "set -e", `cd ${q(hostDir)}`,
     `echo "::step Downloading"`, "git fetch --tags --force origin", `git -c advice.detachedHead=false checkout --force ${q(tag)}`,
     `echo "::step Building"`, `HARBOR_VERSION=${q(target)} docker compose build harbor`,
-    `echo "::step Restarting"`, `HARBOR_VERSION=${q(target)} docker compose up -d harbor`,
+    `echo "::step Restarting"`,
+    // Before 1.0.8 the compose project was "harboros"; its containers hold the ports the new ones need.
+    `old=$(docker ps -aq --filter label=com.docker.compose.project=harboros); [ -z "$old" ] || docker rm -f $old`,
+    `HARBOR_VERSION=${q(target)} docker compose up -d harbor`,
   ].join("\n");
   // Detached so it survives our container being replaced.
   const start = await hostExec(`nohup setsid bash -c ${q(script + "\necho ::done")} > ${q(log)} 2>&1 < /dev/null & echo started`);

@@ -8,6 +8,9 @@ import type { ContainerInfo } from "../../../server/src/protocol";
 import { Guide, markGuide } from "./Guide";
 import { np, watchNowPlaying, control } from "../lib/nowplaying";
 
+/** HarbourOS's own containers (the project was called "harboros" before 1.0.8). */
+const isSelf = (c: ContainerInfo) => /^harbou?ros$/.test(c.stack ?? "");
+
 const SIZES: Size[] = ["s", "m", "tall", "l", "w"];
 const greet = () => { const h = new Date().getHours(); return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
 const IDLE_DAY = 86400e3;
@@ -135,7 +138,7 @@ function AttentionRow({ c }: { c: ContainerInfo }) {
       <span class="muted grow">{describe(c)}{c.stack ? ` · ${c.stack}` : ""}</span>
       {isAdmin.value && <button class="btn" onClick={() => (dialog.value = { kind: "logs", container: c.name })}>Logs</button>}
       {!isAdmin.value ? null : idle ? <button class="btn" onClick={() => op("stop")}>Stop</button> : <button class="btn" onClick={() => op("restart")}>Restart</button>}
-      {isAdmin.value && c.stack !== "harboros" && <button class="btn danger" onClick={() => confirmRemove([c.name]) && op("remove")}>Remove</button>}
+      {isAdmin.value && !isSelf(c) && <button class="btn danger" onClick={() => confirmRemove([c.name]) && op("remove")}>Remove</button>}
     </div>
   );
 }
@@ -168,7 +171,7 @@ function ContainerTable({ list }: { list: ContainerInfo[] }) {
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
   const rows = [...list].sort((a, b) => sort === "name" ? (a.stack ?? a.name).localeCompare(b.stack ?? b.name) || a.name.localeCompare(b.name) : sort === "cpu" ? (b.cpu ?? -1) - (a.cpu ?? -1) : (b.mem ?? -1) - (a.mem ?? -1));
-  const self = (c: ContainerInfo) => c.stack === "harboros"; // stopping these would cut you off
+  const self = isSelf; // stopping these would cut you off
   const op = (n: string, o: string) => api(`/api/containers/${encodeURIComponent(n)}/${o}`, { method: "POST" }).catch((e) => setMsg((e as Error).message));
   const color = (c: ContainerInfo) => c.state === "running" ? (c.health === "unhealthy" ? "var(--err)" : c.health === "starting" ? "var(--warn)" : "var(--ok)") : c.state === "restarting" ? "var(--err)" : "var(--t4)";
 

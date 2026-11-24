@@ -61,7 +61,7 @@ const DEF: [string, string | undefined, number, number, string, Partial<Containe
   ["immich-ml", "immich", 0, 0, "exited", { lastMem: 1.6 * GB, lastCpu: 1.5 }],
   ["uptime-kuma", undefined, 88, 0.4, "running"],
   ["adguard", undefined, 72, 0.3, "running"],
-  ["harbor", "harboros", 58, 0.4, "running"],
+  ["harbor", "harbouros", 58, 0.4, "running"],
 ];
 
 export function demoContainers(): { raw: RawContainer[]; info: ContainerInfo[] } {

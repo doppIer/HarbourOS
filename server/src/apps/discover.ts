@@ -22,7 +22,7 @@ export async function discover(host: string, existing: AppConfig[]): Promise<Fou
   const groups = new Map<string, RawContainer[]>();
   for (const c of list) {
     const proj = c.Labels["com.docker.compose.project"];
-    if (proj === "harboros" || c.Image.includes("docker-socket-proxy") || c.Image.startsWith("harboros")) continue;
+    if (proj === "harbouros" || proj === "harboros" || c.Image.includes("docker-socket-proxy") || /^harbou?ros/.test(c.Image)) continue;
     if (taken.has(cname(c)) || (proj && taken.has(`stack:${proj}`))) continue;
     const key = proj ? `stack:${proj}` : cname(c);
     groups.set(key, [...(groups.get(key) ?? []), c]);

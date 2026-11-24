@@ -371,5 +371,5 @@ function dropEmptyApps(ids: string[]) {
 }
 
 function isHarbor(c: { Labels?: Record<string, string>; Image?: string }) {
-  return c.Labels?.["com.docker.compose.project"] === "harboros" || /docker-socket-proxy|^harboros/.test(c.Image ?? "");
+  return /^harbou?ros$/.test(c.Labels?.["com.docker.compose.project"] ?? "") || /docker-socket-proxy|^harbou?ros/.test(c.Image ?? "");
 }

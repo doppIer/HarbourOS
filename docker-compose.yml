@@ -1,4 +1,4 @@
-name: harboros
+name: harbouros
 
 services:
   # Only this container can talk to dockerd, and only with the verbs enabled below.
@@ -24,7 +24,7 @@ services:
       context: .
       args:
         HARBOR_VERSION: ${HARBOR_VERSION:-dev}   # set by the updater to the release being installed
-    image: harboros:latest
+    image: harbouros:latest
     restart: unless-stopped
     depends_on: [docker-proxy]
     env_file: .env
