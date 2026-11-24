@@ -70,6 +70,54 @@ This gives you the browser terminal and Files, and lets HarbourOS update itself.
 
 </details>
 
+## Uninstall
+
+Run these on the server, from the HarbourOS folder. Skip any step for something you never set up.
+
+**1. Turn off the optional extras**
+
+```bash
+sudo bash host/setup-https.sh off
+```
+
+```bash
+sudo bash host/setup-nowplaying.sh off
+```
+
+```bash
+sudo systemctl disable --now rapl-read.service; sudo rm -f /etc/systemd/system/rapl-read.service; sudo systemctl daemon-reload
+```
+
+**2. Remove apps installed from the store** (keeps their files in `/srv/harbor`, see step 6)
+
+```bash
+for d in /home/harbor/harbor-stacks/*/; do sudo docker compose -p "$(basename "$d")" -f "$d/compose.yml" --env-file "$d/.env" down --remove-orphans; done
+```
+
+**3. Stop HarbourOS and remove its containers and images**
+
+```bash
+sudo docker compose down --rmi all --remove-orphans
+```
+
+**4. Remove the terminal user and its folder access**
+
+```bash
+d="$PWD"; while d="$(dirname "$d")"; [ "$d" != / ]; do sudo setfacl -x u:harbor "$d" 2>/dev/null; done; sudo userdel -r harbor
+```
+
+**5. Delete the HarbourOS folder** (accounts, settings and history live in its `data/` folder)
+
+```bash
+cd .. && sudo rm -rf HarbourOS
+```
+
+**6. Delete your apps' files** (only if you don't want them any more: this is the data of every app you installed from the store)
+
+```bash
+sudo rm -rf /srv/harbor
+```
+
 ## Make it yours: drag and drop
 
 Arrange things by dragging. No config files.
