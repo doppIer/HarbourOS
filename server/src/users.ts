@@ -62,6 +62,7 @@ export const users = {
   remove(id: string) {
     db.prepare("DELETE FROM sessions WHERE user_id=?").run(id);
     db.prepare("DELETE FROM wall_profiles WHERE id=?").run(`user:${id}`);
+    db.prepare("DELETE FROM passkeys WHERE user_id=?").run(id);
     db.prepare("DELETE FROM users WHERE id=?").run(id);
   },
 };

@@ -4,6 +4,7 @@ import { markGuide } from "../home/Guide";
 import { Icon } from "../icons/Icon";
 import { api } from "../lib/ws";
 import { menuHandlers } from "./ContextMenu";
+import mark from "../assets/mark.png";
 
 const closedKey = "harbor.closedSections";
 const readClosed = (): string[] => { try { return JSON.parse(localStorage.getItem(closedKey) ?? "[]"); } catch { return []; } };
@@ -91,7 +92,7 @@ export function Sidebar() {
         <div class="sb-brand">
           <button class="iconbtn" style={{ marginLeft: -6 }} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => saveSettings({ sidebarCollapsed: !collapsed })}>
-            <img src="/icons/mark.png" width={22} height={20} alt="" />
+            <img src={mark} width={22} height={20} alt="" />
           </button>
           <span class="brand-name">HarbourOS</span>
           <span class="brand-tools">

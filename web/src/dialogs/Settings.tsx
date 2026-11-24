@@ -4,6 +4,7 @@ import { api } from "../lib/ws";
 import { Icon } from "../icons/Icon";
 import { WeatherPlace } from "../wall/Wall";
 import { ASCII_CREDIT } from "../shell/Background";
+import { addPasskey, passkeysAvailable, type PasskeyInfo } from "../lib/passkey";
 import type { SpeakerStatus } from "../../../server/src/protocol";
 
 type Bg = { name: string; module: string };
@@ -80,6 +81,7 @@ function Account() {
           </button>
         </div>
       </div>
+      {u.role !== "device" && <Passkeys />}
     </>
   );
 }
@@ -517,6 +519,54 @@ function Updates() {
           </div>
         )}
         {err && <span class="err-text">{err}</span>}
+      </div>
+    </>
+  );
+}
+
+// ---------- passkeys: sign in with Face ID / Touch ID / Windows Hello ----------
+function Passkeys() {
+  const [list, setList] = useState<PasskeyInfo[] | null>(null);
+  const [msg, setMsg] = useState<{ ok?: string; err?: string }>({});
+  const [busy, setBusy] = useState(false);
+  const can = passkeysAvailable();
+  const host = location.hostname;
+  useEffect(() => { api<PasskeyInfo[]>("/api/me/passkeys").then(setList).catch(() => setList([])); }, []);
+
+  const add = async () => {
+    setBusy(true); setMsg({});
+    try { const l = await addPasskey(); if (l) { setList(l); setMsg({ ok: "Passkey added. Next time, pick \"Sign in with a passkey\"." }); } }
+    catch (e) { setMsg({ err: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
+  const remove = async (k: PasskeyInfo) => {
+    if (!confirm(`Remove the passkey "${k.name}"? You can add it again later.`)) return;
+    try { setList(await api<PasskeyInfo[]>(`/api/me/passkeys/${encodeURIComponent(k.id)}`, { method: "DELETE" })); setMsg({}); }
+    catch (e) { setMsg({ err: (e as Error).message }); }
+  };
+  const when = (t: number) => new Date(t).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+
+  return (
+    <>
+      <div class="sec-title">Passkeys</div>
+      <div class="rows" style={{ padding: 16, display: "grid", gap: 12 }}>
+        <div class="muted" style={{ fontSize: 13 }}>Sign in with Face ID, Touch ID, Windows Hello or a security key instead of your password.</div>
+        {list?.map((k) => (
+          <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Icon name="solar:key-minimalistic-square-linear" size={18} />
+            <span>{k.name}</span>
+            <span class="dim" style={{ fontSize: 12.5 }}>{k.rp_id} · added {when(k.created)}{k.last_used ? ` · last used ${when(k.last_used)}` : ""}</span>
+            <button class="iconbtn" style={{ marginLeft: "auto" }} aria-label={`Remove ${k.name}`} onClick={() => remove(k)}><Icon name="solar:trash-bin-minimalistic-linear" size={16} /></button>
+          </div>
+        ))}
+        {list && !list.length && <div class="dim" style={{ fontSize: 13 }}>No passkeys yet.</div>}
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <button class="btn" onClick={add} disabled={!can || busy}><Icon name="solar:add-circle-linear" size={15} />Add a passkey</button>
+          {msg.ok && <span class="muted">{msg.ok}</span>}
+          {msg.err && <span class="err-text">{msg.err}</span>}
+        </div>
+        {!can && <div class="dim" style={{ fontSize: 12.5 }}>Passkeys need HarbourOS over https, for example through <span class="mono">tailscale serve</span>. Right now it's open over plain http.</div>}
+        {can && <div class="dim" style={{ fontSize: 12.5 }}>A passkey works on the address it was made on ({host}). If you also open HarbourOS at another address, add one there too.</div>}
       </div>
     </>
   );

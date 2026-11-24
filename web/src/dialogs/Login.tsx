@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { api } from "../lib/ws";
 import { BackgroundLayer } from "../shell/Background";
 import { Icon } from "../icons/Icon";
+import mark from "../assets/mark.png";
+import { passkeysAvailable, signInWithPasskey } from "../lib/passkey";
 
 type Mode = "login" | "signup" | "setup" | "forgot" | "reset";
 interface Config { needsSetup: boolean; allowSignup: boolean; background: { module: string; dim: number; blur: number }; accent: string }
@@ -36,7 +38,7 @@ const STEPS: Record<Mode, Step[]> = {
 
 const COPY: Record<Mode, { title: string; sub: string }> = {
   forgot: { title: "Reset your password", sub: "HarbourOS doesn't send email. It writes a one-time code to the server log instead, or your admin can make one for you in Settings → Users." },
-  reset: { title: "Enter your reset code", sub: "Run “docker compose logs harbor” on the server and look for “password reset”. The code works once, for 15 minutes." },
+  reset: { title: "Enter your reset code", sub: "On the server, in the folder with docker-compose.yml, run this. The code works once, for 15 minutes." },
   login: { title: "Sign in to HarbourOS", sub: "Your home server, one tab away. Sign in with the account your admin gave you." },
   signup: { title: "Create your account", sub: "An admin approves new accounts before you can sign in." },
   setup: { title: "Set up HarbourOS", sub: "Create the first account. It becomes the admin for this server." },
@@ -67,6 +69,15 @@ export function Login({ onDone }: { onDone: () => void }) {
   const value = vals[cur.key];
 
   const switchMode = (m: Mode) => { setMode(m); setStep(0); setErr(""); setPending(false); setVals((v) => ({ ...v, password: "", code: "" })); };
+
+  const canPasskey = passkeysAvailable();
+  const passkey = async () => {
+    if (busy) return;
+    setBusy(true); setErr("");
+    try { if (await signInWithPasskey()) onDone(); }
+    catch (x) { setErr((x as Error).message); }
+    finally { setBusy(false); }
+  };
 
   const next = async (e: Event) => {
     e.preventDefault();
@@ -112,10 +123,12 @@ export function Login({ onDone }: { onDone: () => void }) {
       <BackgroundLayer module={cfg.background.module} dim={cfg.background.dim} blur={cfg.background.blur} />
       <div class="auth-center">
         <div class={`auth-head ${focused && value ? "soft" : ""}`}>
-          <img src="/icons/mark.png" width={40} height={36} alt="" style={{ marginBottom: 18 }} />
+          <img src={mark} width={40} height={36} alt="" style={{ marginBottom: 18 }} />
           <h1>{pending ? "You're on the list" : copy.title}</h1>
           <p>{pending ? "Thanks. An admin needs to approve your account; you can sign in after that." : copy.sub}</p>
         </div>
+
+        {mode === "reset" && !pending && <ResetCommand />}
 
         {!pending && (
           <form class="pill" onSubmit={next} noValidate>
@@ -147,6 +160,12 @@ export function Login({ onDone }: { onDone: () => void }) {
           </form>
         )}
 
+        {mode === "login" && step === 0 && canPasskey && !pending && (
+          <button type="button" class="passkey-btn" onClick={passkey} disabled={busy}>
+            <Icon name="solar:key-minimalistic-square-linear" size={18} />Sign in with a passkey
+          </button>
+        )}
+
         <div class="auth-meta">
           {err ? <span class="err-text">{err}</span>
             : step > 0 && !pending ? <span class="dim">{vals.email || vals.name}</span>
@@ -168,6 +187,30 @@ export function Login({ onDone }: { onDone: () => void }) {
               </span>
             : <span>Already have an account? <button class="link" onClick={() => switchMode("login")}>Sign in</button>.</span>}
       </footer>
+    </div>
+  );
+}
+
+const RESET_CMD = 'docker compose logs harbor | grep -A2 "password reset"';
+
+/** The command that shows the reset code, big enough to read and one tap to copy. */
+function ResetCommand() {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    // navigator.clipboard needs https or localhost; fall back to a hidden textarea on plain http.
+    const done = () => { setCopied(true); setTimeout(() => setCopied(false), 1800); };
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(RESET_CMD).then(done).catch(() => {}); return; }
+    const t = Object.assign(document.createElement("textarea"), { value: RESET_CMD });
+    t.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); done(); } finally { t.remove(); }
+  };
+  return (
+    <div class="reset-cmd">
+      <code><span class="dim">$ </span>{RESET_CMD}</code>
+      <button type="button" class="reset-copy" onClick={copy} aria-label="Copy the command">
+        <Icon name={copied ? "solar:check-circle-linear" : "solar:copy-linear"} size={16} />{copied ? "Copied" : "Copy"}
+      </button>
+      <div class="reset-hint">Look for <b>Code: XXXX-XXXX</b> in the output.</div>
     </div>
   );
 }

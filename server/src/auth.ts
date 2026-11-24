@@ -11,6 +11,7 @@ import { db, settings } from "./db.js";
 import { env, isTrustedProxy } from "./env.js";
 import { deviceUser } from "./wall.js";
 import { resets, users, validEmail, validPassword, type User } from "./users.js";
+import { registerPasskeys } from "./passkeys.js";
 
 const COOKIE = "harbor_session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -92,6 +93,8 @@ function memberAllowed(method: string, url: string, role: string, decoded = url)
   if (method === "GET" && (p === "/api/wall/profile" || p === "/api/weather" || p === "/api/calendar" || p.startsWith("/api/transit/") || p.startsWith("/api/music/") || p.startsWith("/api/nowplaying"))) return true;
   if (method === "PUT" && p === "/api/wall/profile") return true;
   if (method === "POST" && (p === "/api/nowplaying/control" || p === "/api/nowplaying/volume")) return true;
+  // Your own passkeys (Settings → Account); paired tablets have none.
+  if (role !== "device" && (p === "/api/me/passkeys" || p === "/api/me/passkeys/options" || p === "/api/me/passkeys/:id")) return true;
   if (role === "device") return (method === "GET" && ["/ws", "/api/apps", "/api/containers", "/api/settings", "/api/widgets"].includes(p))
     || openApp;
   if (method === "GET") {
@@ -103,7 +106,7 @@ function memberAllowed(method: string, url: string, role: string, decoded = url)
   return false;
 }
 
-const PUBLIC = new Set(["/api/devices/pair", "/api/login", "/api/signup", "/api/me", "/api/auth/config", "/api/logout", "/api/password/forgot", "/api/password/reset", "/api/nowplaying/push"]); // push checks its own token
+const PUBLIC = new Set(["/api/devices/pair", "/api/login", "/api/signup", "/api/me", "/api/auth/config", "/api/logout", "/api/password/forgot", "/api/password/reset", "/api/login/passkey/options", "/api/login/passkey", "/api/nowplaying/push"]); // push checks its own token
 
 export async function registerAuth(app: FastifyInstance) {
   // Bootstrap: an admin from HARBOR_PASSWORD on a fresh install (optional).
@@ -180,6 +183,8 @@ export async function registerAuth(app: FastifyInstance) {
     startSession(reply, u);
     return { user: u };
   });
+
+  registerPasskeys(app, { sameOrigin, limited, fail, startSession });
 
   app.post("/api/logout", async (req, reply) => {
     const raw = req.cookies[COOKIE];
