@@ -21,6 +21,11 @@
   <img src="docs/screenshots/home.png" alt="HarbourOS desktop: sidebar with apps, live stats, and a small now-playing pill next to Customize" width="100%">
 </p>
 
+<p align="center">
+  <a href="docs/preview/harbouros-preview.mp4"><img src="docs/preview/harbouros-preview.jpg" alt="Watch the 25-second HarbourOS preview video" width="100%"></a><br>
+  <a href="docs/preview/harbouros-preview.mp4"><b>▶ Watch the 25-second preview</b></a>
+</p>
+
 ## Quick start
 
 You need a Linux server with Docker and [Tailscale](https://tailscale.com) (signed in with `sudo tailscale up`), so only your own devices can reach it.
